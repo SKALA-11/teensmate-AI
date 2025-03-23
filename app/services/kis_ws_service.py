@@ -1,0 +1,502 @@
+import os
+import json
+import time
+import requests
+import asyncio
+import logging
+import pandas as pd
+import numpy as np
+from collections import deque, namedtuple
+from io import StringIO
+from threading import Thread
+from enum import StrEnum
+
+import websocket  # pip install websocket-client = 동기
+import websockets # pip install websockets = 비동기
+import talib as ta
+
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+from base64 import b64decode
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# --- Enum 및 글로벌 변수 ---
+class KIS_WSReq(StrEnum):
+    BID_ASK = 'H0STASP0'   # 실시간 국내주식 호가
+    CONTRACT = 'H0STCNT0'  # 실시간 국내주식 체결가
+    NOTICE = 'H0STCNI0'    # 실시간 계좌체결발생통보
+    
+_today__ = pd.Timestamp.now().strftime("%Y%m%d")
+
+# 전역 컨테이너 (필요시 초기화; 여기서는 REST 호출 시 사용 결과만 반환)
+contract_sub_df = dict()
+tr_plans = dict()
+
+reserved_cols = ['TICK_HOUR', 'STCK_PRPR', 'ACML_VOL']
+# 실시간 국내주식체결 column header
+contract_cols = ['MKSC_SHRN_ISCD',
+                 'TICK_HOUR',  # pandas time conversion 편의를 위해 이 필드만 이름을 통일한다
+                 'STCK_PRPR',  # 현재가
+                 'PRDY_VRSS_SIGN',  # 전일 대비 부호
+                 'PRDY_VRSS',  # 전일 대비
+                 'PRDY_CTRT',  # 전일 대비율
+                 'WGHN_AVRG_STCK_PRC',  # 가중 평균 주식 가격
+                 'STCK_OPRC',  # 시가
+                 'STCK_HGPR',  # 고가
+                 'STCK_LWPR',  # 저가
+                 'ASKP1',  # 매도호가1
+                 'BIDP1',  # 매수호가1
+                 'CNTG_VOL',  # 체결 거래량
+                 'ACML_VOL',  # 누적 거래량
+                 'ACML_TR_PBMN',  # 누적 거래 대금
+                 'SELN_CNTG_CSNU',  # 매도 체결 건수
+                 'SHNU_CNTG_CSNU',  # 매수 체결 건수
+                 'NTBY_CNTG_CSNU',  # 순매수 체결 건수
+                 'CTTR',  # 체결강도
+                 'SELN_CNTG_SMTN',  # 총 매도 수량
+                 'SHNU_CNTG_SMTN',  # 총 매수 수량
+                 'CCLD_DVSN',  # 체결구분 (1:매수(+), 3:장전, 5:매도(-))
+                 'SHNU_RATE',  # 매수비율
+                 'PRDY_VOL_VRSS_ACML_VOL_RATE',  # 전일 거래량 대비 등락율
+                 'OPRC_HOUR',  # 시가 시간
+                 'OPRC_VRSS_PRPR_SIGN',  # 시가대비구분
+                 'OPRC_VRSS_PRPR',  # 시가대비
+                 'HGPR_HOUR',
+                 'HGPR_VRSS_PRPR_SIGN',
+                 'HGPR_VRSS_PRPR',
+                 'LWPR_HOUR',
+                 'LWPR_VRSS_PRPR_SIGN',
+                 'LWPR_VRSS_PRPR',
+                 'BSOP_DATE',  # 영업 일자
+                 'NEW_MKOP_CLS_CODE',  # 신 장운영 구분 코드
+                 'TRHT_YN',
+                 'ASKP_RSQN1',
+                 'BIDP_RSQN1',
+                 'TOTAL_ASKP_RSQN',
+                 'TOTAL_BIDP_RSQN',
+                 'VOL_TNRT',  # 거래량 회전율
+                 'PRDY_SMNS_HOUR_ACML_VOL',  # 전일 동시간 누적 거래량
+                 'PRDY_SMNS_HOUR_ACML_VOL_RATE',  # 전일 동시간 누적 거래량 비율
+                 'HOUR_CLS_CODE',  # 시간 구분 코드(0 : 장중 )
+                 'MRKT_TRTM_CLS_CODE',
+                 'VI_STND_PRC']
+# 실시간 국내주식호가 column eader
+bid_ask_cols = ['MKSC_SHRN_ISCD',
+                'TICK_HOUR',  # pandas time conversion 편의를 위해 이 필드만 이름을 통일한다
+                'HOUR_CLS_CODE',  # 시간 구분 코드(0 : 장중 )
+                'ASKP1',  # 매도호가1
+                'ASKP2',
+                'ASKP3',
+                'ASKP4',
+                'ASKP5',
+                'ASKP6',
+                'ASKP7',
+                'ASKP8',
+                'ASKP9',
+                'ASKP10',
+                'BIDP1',  # 매수호가1
+                'BIDP2',
+                'BIDP3',
+                'BIDP4',
+                'BIDP5',
+                'BIDP6',
+                'BIDP7',
+                'BIDP8',
+                'BIDP9',
+                'BIDP10',
+                'ASKP_RSQN1',  # 매도호가 잔량1
+                'ASKP_RSQN2',
+                'ASKP_RSQN3',
+                'ASKP_RSQN4',
+                'ASKP_RSQN5',
+                'ASKP_RSQN6',
+                'ASKP_RSQN7',
+                'ASKP_RSQN8',
+                'ASKP_RSQN9',
+                'ASKP_RSQN10',
+                'BIDP_RSQN1',  # 매수호가 잔량1
+                'BIDP_RSQN2',
+                'BIDP_RSQN3',
+                'BIDP_RSQN4',
+                'BIDP_RSQN5',
+                'BIDP_RSQN6',
+                'BIDP_RSQN7',
+                'BIDP_RSQN8',
+                'BIDP_RSQN9',
+                'BIDP_RSQN10',
+                'TOTAL_ASKP_RSQN',  # 총 매도호가 잔량
+                'TOTAL_BIDP_RSQN',  # 총 매수호가 잔량
+                'OVTM_TOTAL_ASKP_RSQN',
+                'OVTM_TOTAL_BIDP_RSQN',
+                'ANTC_CNPR',
+                'ANTC_CNQN',
+                'ANTC_VOL',
+                'ANTC_CNTG_VRSS',
+                'ANTC_CNTG_VRSS_SIGN',
+                'ANTC_CNTG_PRDY_CTRT',
+                'ACML_VOL',  # 누적 거래량
+                'TOTAL_ASKP_RSQN_ICDC',
+                'TOTAL_BIDP_RSQN_ICDC',
+                'OVTM_TOTAL_ASKP_ICDC',
+                'OVTM_TOTAL_BIDP_ICDC',
+                'STCK_DEAL_CLS_CODE']
+# 실시간 계좌체결발생통보 column header
+notice_cols = ['CUST_ID',  # HTS ID
+               'ACNT_NO',
+               'ODER_NO',  # 주문번호
+               'OODER_NO',  # 원주문번호
+               'SELN_BYOV_CLS',  # 매도매수구분
+               'RCTF_CLS',  # 정정구분
+               'ODER_KIND',  # 주문종류(00 : 지정가,01 : 시장가,02 : 조건부지정가)
+               'ODER_COND',  # 주문조건
+               'STCK_SHRN_ISCD',  # 주식 단축 종목코드
+               'CNTG_QTY',  # 체결 수량(체결통보(CNTG_YN=2): 체결 수량, 주문·정정·취소·거부 접수 통보(CNTG_YN=1): 주문수량의미)
+               'CNTG_UNPR',  # 체결단가
+               'STCK_CNTG_HOUR',  # 주식 체결 시간
+               'RFUS_YN',  # 거부여부(0 : 승인, 1 : 거부)
+               'CNTG_YN',  # 체결여부(1 : 주문,정정,취소,거부,, 2 : 체결 (★ 체결만 볼 경우 2번만 ))
+               'ACPT_YN',  # 접수여부(1 : 주문접수, 2 : 확인 )
+               'BRNC_NO',  # 지점
+               'ODER_QTY',  # 주문수량
+               'ACNT_NAME',  # 계좌명
+               'CNTG_ISNM',  # 체결종목명
+               'CRDT_CLS',  # 신용구분
+               'CRDT_LOAN_DATE',  # 신용대출일자
+               'CNTG_ISNM40',  # 체결종목명40
+               'ODER_PRC'  # 주문가격
+               ]
+
+# --- AES256 복호화 함수 ---
+def aes_cbc_base64_dec(key: str, iv: str, cipher_text: str) -> str:
+    cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv.encode('utf-8'))
+    return bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))
+
+
+# --- 웹소켓 접속키 발급 (수정: REST로부터 입력받은 키 사용 대신 환경변수 또는 인자 활용) ---
+def get_approval(app_key: str, secret_key: str) -> str:
+    url = f"{settings.KIS_BASE_URL}/oauth2/Approval"
+    headers = {"Content-Type": "application/json"}
+    body = {"grant_type": "client_credentials", "appkey": app_key, "secretkey": secret_key}
+    res = requests.post(url, headers=headers, data=json.dumps(body))
+    res.raise_for_status()
+    approval_key = res.json()["approval_key"]
+    return approval_key
+
+# 글로벌 변수 (웹소켓 연결 전 approval key 저장)
+_connect_key = None
+
+# --- 메시지 빌드 ---
+def _build_message(app_key: str, tr_id: str, added_data: str, tr_type: str = '1') -> str:
+    message = {
+        "header": {
+            "approval_key": app_key,
+            "custtype": "P",
+            "tr_type": tr_type,
+            "content-type": "utf-8"
+        },
+        "body": {
+            "input": {
+                "tr_id": tr_id,
+                "tr_key": added_data
+            }
+        }
+    }
+    return json.dumps(message)
+
+# --- 구독/해제 함수 ---
+def subscribe(ws, sub_type: str, app_key: str, sub_data: str):
+    msg = _build_message(app_key, sub_type, sub_data)
+    ws.send(msg, websocket.ABNF.OPCODE_TEXT)
+    time.sleep(0.1)
+
+def unsubscribe(ws, sub_type: str, app_key: str, sub_data: str):
+    msg = _build_message(app_key, sub_type, sub_data, tr_type='2')
+    ws.send(msg, websocket.ABNF.OPCODE_TEXT)
+    time.sleep(0.1)
+
+# --- 데이터 파싱 함수 ---
+def _dparse(data: str) -> dict:
+    try:
+        parts = data.split("|")
+        tr_id = parts[1]
+        return {"tr_id": tr_id, "raw_data": parts[3]}
+    except Exception as e:
+        logger.error("파싱 오류: %s", e)
+        return {}
+
+# --- WebSocket 이벤트 핸들러 (콜백 함수들) ---
+def on_message(ws, data):
+    logger.info("수신 메세지: %s", data)
+    parsed = _dparse(data)
+    ws.last_message = parsed  # 마지막 메시지를 저장
+
+def on_error(ws, error):
+    logger.error("웹소켓 오류: %s", error)
+
+def on_close(ws, status_code, close_msg):
+    logger.info("웹소켓 종료: %s, %s", status_code, close_msg)
+
+def on_open(ws):
+    logger.info("웹소켓 연결 성공")
+    # 기본적으로 구독할 종목을 지정 (필요에 따라 파라미터로 받을 수 있음)
+    stocks = ['009540', '012630']  # 예시 종목
+    for scode in stocks:
+        subscribe(ws, KIS_WSReq.BID_ASK, _connect_key, scode)
+        subscribe(ws, KIS_WSReq.CONTRACT, _connect_key, scode)
+    # 계좌체결발생통보 구독 (HTS ID는 환경변수나 인자로 받을 수 있음)
+    subscribe(ws, KIS_WSReq.NOTICE, _connect_key, settings.KIS_HTS_ID)
+
+# --- 메인 웹소켓 연결 함수 ---
+def run_kis_websocket(app_key: str, secret_key: str, 
+                        stockcode: str = None, htsid: str = None, 
+                        custtype: str = None) -> dict:
+    """
+    REST API 호출 시 이 함수가 실행되어 KIS 웹소켓에 연결하고, 명령(cmd)에 따라
+    구독/해제 등의 동작을 수행한 후, 수신된 데이터를 간단히 반환합니다.
+    
+    이 함수는 동기 방식으로 동작하며, 웹소켓 연결 종료 후 마지막 수신 데이터를 반환합니다.
+    """
+    global _connect_key
+    try:
+        _connect_key = get_approval(app_key, secret_key)
+        logger.info("approval_key 발급 성공: %s", _connect_key)
+    except Exception as e:
+        return {"error": f"approval_key 발급 실패: {e}"}
+    
+    ws_url = settings.KIS_WS_BASE_URL
+    ws_app = websocket.WebSocketApp(ws_url,
+                                    on_open=on_open,
+                                    on_message=on_message,
+                                    on_error=on_error,
+                                    on_close=on_close)
+    # run_forever()는 블로킹 호출이므로 별도 스레드에서 실행
+    thread = Thread(target=ws_app.run_forever)
+    thread.start()
+    # 간단히 5초간 대기한 후, 종료 처리하고 결과 반환 (실제 환경에 맞게 조정)
+    time.sleep(5)
+    ws_app.close()
+    thread.join()
+    result = {"message": "WebSocket connection executed", "last_received": getattr(ws_app, 'last_message', {})}
+    return result
+
+
+# 국내주식호가 출력 포멧
+def stockhoka(data):
+    """ 넘겨받는데이터가 정상인지 확인
+    print("stockhoka[%s]"%(data))
+    """
+    recvvalue = data.split('^')  # 수신데이터를 split '^'
+
+    print("유가증권 단축 종목코드 [" + recvvalue[0] + "]")
+    print("영업시간 [" + recvvalue[1] + "]" + "시간구분코드 [" + recvvalue[2] + "]")
+    print("======================================")
+    print("매도호가10 [%s]    잔량10 [%s]" % (recvvalue[12], recvvalue[32]))
+    print("매도호가09 [%s]    잔량09 [%s]" % (recvvalue[11], recvvalue[31]))
+    print("매도호가08 [%s]    잔량08 [%s]" % (recvvalue[10], recvvalue[30]))
+    print("매도호가07 [%s]    잔량07 [%s]" % (recvvalue[9], recvvalue[29]))
+    print("매도호가06 [%s]    잔량06 [%s]" % (recvvalue[8], recvvalue[28]))
+    print("매도호가05 [%s]    잔량05 [%s]" % (recvvalue[7], recvvalue[27]))
+    print("매도호가04 [%s]    잔량04 [%s]" % (recvvalue[6], recvvalue[26]))
+    print("매도호가03 [%s]    잔량03 [%s]" % (recvvalue[5], recvvalue[25]))
+    print("매도호가02 [%s]    잔량02 [%s]" % (recvvalue[4], recvvalue[24]))
+    print("매도호가01 [%s]    잔량01 [%s]" % (recvvalue[3], recvvalue[23]))
+    print("--------------------------------------")
+    print("매수호가01 [%s]    잔량01 [%s]" % (recvvalue[13], recvvalue[33]))
+    print("매수호가02 [%s]    잔량02 [%s]" % (recvvalue[14], recvvalue[34]))
+    print("매수호가03 [%s]    잔량03 [%s]" % (recvvalue[15], recvvalue[35]))
+    print("매수호가04 [%s]    잔량04 [%s]" % (recvvalue[16], recvvalue[36]))
+    print("매수호가05 [%s]    잔량05 [%s]" % (recvvalue[17], recvvalue[37]))
+    print("매수호가06 [%s]    잔량06 [%s]" % (recvvalue[18], recvvalue[38]))
+    print("매수호가07 [%s]    잔량07 [%s]" % (recvvalue[19], recvvalue[39]))
+    print("매수호가08 [%s]    잔량08 [%s]" % (recvvalue[20], recvvalue[40]))
+    print("매수호가09 [%s]    잔량09 [%s]" % (recvvalue[21], recvvalue[41]))
+    print("매수호가10 [%s]    잔량10 [%s]" % (recvvalue[22], recvvalue[42]))
+    print("======================================")
+    print("총매도호가 잔량        [%s]" % (recvvalue[43]))
+    print("총매도호가 잔량 증감   [%s]" % (recvvalue[54]))
+    print("총매수호가 잔량        [%s]" % (recvvalue[44]))
+    print("총매수호가 잔량 증감   [%s]" % (recvvalue[55]))
+    print("시간외 총매도호가 잔량 [%s]" % (recvvalue[45]))
+    print("시간외 총매수호가 증감 [%s]" % (recvvalue[46]))
+    print("시간외 총매도호가 잔량 [%s]" % (recvvalue[56]))
+    print("시간외 총매수호가 증감 [%s]" % (recvvalue[57]))
+    print("예상 체결가            [%s]" % (recvvalue[47]))
+    print("예상 체결량            [%s]" % (recvvalue[48]))
+    print("예상 거래량            [%s]" % (recvvalue[49]))
+    print("예상체결 대비          [%s]" % (recvvalue[50]))
+    print("부호                   [%s]" % (recvvalue[51]))
+    print("예상체결 전일대비율    [%s]" % (recvvalue[52]))
+    print("누적거래량             [%s]" % (recvvalue[53]))
+    print("주식매매 구분코드      [%s]" % (recvvalue[58]))
+
+# 국내주식체결처리 출력 포멧
+def stockspurchase(data_cnt, data):
+    print("============================================")
+    menulist = "유가증권단축종목코드|주식체결시간|주식현재가|전일대비부호|전일대비|전일대비율|가중평균주식가격|주식시가|주식최고가|주식최저가|매도호가1|매수호가1|체결거래량|누적거래량|누적거래대금|매도체결건수|매수체결건수|순매수체결건수|체결강도|총매도수량|총매수수량|체결구분|매수비율|전일거래량대비등락율|시가시간|시가대비구분|시가대비|최고가시간|고가대비구분|고가대비|최저가시간|저가대비구분|저가대비|영업일자|신장운영구분코드|거래정지여부|매도호가잔량|매수호가잔량|총매도호가잔량|총매수호가잔량|거래량회전율|전일동시간누적거래량|전일동시간누적거래량비율|시간구분코드|임의종료구분코드|정적VI발동기준가"
+    menustr = menulist.split('|')
+    pValue = data.split('^')
+    i = 0
+    for cnt in range(data_cnt):  # 넘겨받은 체결데이터 개수만큼 print 한다
+        print("### [%d / %d]" % (cnt + 1, data_cnt))
+        for menu in menustr:
+            print("%-13s[%s]" % (menu, pValue[i]))
+            i += 1
+
+# 국내주식체결통보 출력 포멧 
+def stocksigningnotice(data, key, iv):
+    # AES256 처리 
+    aes_dec_str = aes_cbc_base64_dec(key, iv, data)
+    pValue = aes_dec_str.split('^')
+
+    if pValue[13] == '2': # 체결통보 
+        print("#### 국내주식 체결 통보 ####")
+        menulist = "고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|체결수량|체결단가|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|체결종목명|신용구분|신용대출일자|체결종목명40|주문가격"
+        menustr1 = menulist.split('|')
+    else:
+        print("#### 국내주식 주문·정정·취소·거부 접수 통보 ####")
+        menulist = "고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|주문수량|주문가격|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|주문종목명|신용구분|신용대출일자|체결종목명40|체결단가"
+        menustr1 = menulist.split('|')
+    
+    i = 0
+    for menu in menustr1:
+        print("%s  [%s]" % (menu, pValue[i]))
+        i += 1
+
+
+async def connect(app_key: str, secret_key: str, 
+                        stockcode: str = None, htsid: str = None, 
+                        custtype: str = None):
+    global _connect_key
+    print("connect")
+    try:
+        _connect_key = get_approval(app_key, secret_key)
+        logger.info("approval_key 발급 성공: %s", _connect_key)
+    except Exception as e:
+        return {"error": f"approval_key 발급 실패: {e}"}
+    
+    url = settings.KIS_WS_BASE_URL
+
+    try:
+        async with websockets.connect(url, ping_interval=None) as websocket:
+            print("1.주식호가, 2.주식호가해제, 3.주식체결, 4.주식체결해제, 5.주식체결통보(고객), 6.주식체결통보해제(고객), 7.주식체결통보(모의), 8.주식체결통보해제(모의)")
+            print("Input Command :")
+            cmd = input().rstrip()
+
+            # 입력값 체크
+            if cmd < '0' or cmd > '9':
+                print("> Wrong Input Data", cmd)
+                
+            elif cmd == '0':
+                print("Exit!!")
+
+            # 입력값에 따라 전송 데이터셋 구분 처리
+            if cmd == '1':         # 주식호가 등록
+                tr_id = 'H0STASP0'
+                tr_type = '1'
+            elif cmd == '2':       # 주식호가 등록해제
+                tr_id = 'H0STASP0'
+                tr_type = '2'
+            elif cmd == '3':       # 주식체결 등록
+                tr_id = 'H0STCNT0'
+                tr_type = '1'
+            elif cmd == '4':       # 주식체결 등록해제
+                tr_id = 'H0STCNT0'
+                tr_type = '2'
+            elif cmd == '5':       # 주식체결통보 등록(고객용)
+                tr_id = 'H0STCNI0' # 고객체결통보
+                tr_type = '1'
+            elif cmd == '6':       # 주식체결통보 등록해제(고객용)
+                tr_id = 'H0STCNI0' # 고객체결통보
+                tr_type = '2'
+            elif cmd == '7':       # 주식체결통보 등록(모의)
+                tr_id = 'H0STCNI9' # 테스트용 직원체결통보
+                tr_type = '1'
+            elif cmd == '8':       # 주식체결통보 등록해제(모의)
+                tr_id = 'H0STCNI9' # 테스트용 직원체결통보
+                tr_type = '2'
+            else:
+                senddata = 'wrong inert data'
+
+            # send json, 체결통보는 tr_key 입력항목이 다르므로 분리
+            if cmd == '5' or cmd == '6' or cmd == '7' or cmd == '8':
+                senddata = '{"header":{"approval_key":"' + _connect_key + '","custtype":"' + custtype + '","tr_type":"' + tr_type + '","content-type":"utf-8"},"body":{"input":{"tr_id":"' + tr_id + '","tr_key":"' + htsid + '"}}}'
+            else:
+                senddata = '{"header":{"approval_key":"' + _connect_key + '","custtype":"' + custtype + '","tr_type":"' + tr_type + '","content-type":"utf-8"},"body":{"input":{"tr_id":"' + tr_id + '","tr_key":"' + stockcode + '"}}}'
+
+            print('Input Command is :', senddata)
+
+            await websocket.send(senddata)
+            await asyncio.sleep(0.5)
+
+            # 데이터가 오길 기다린다.
+            while True:
+                data = await websocket.recv()
+                await asyncio.sleep(0.5)
+                print("Recev Command is :", data)
+                
+                if data[0] == '0' or data[0] == '1':  # 실시간 데이터일 경우
+                    trid = jsonObject["header"]["tr_id"]
+
+                    if data[0] == '0':
+                        recvstr = data.split('|')  # 수신데이터가 실데이터 이전은 '|'로 나뉘어져있어 split 해야 함
+                        trid0 = recvstr[1]
+                        if trid0 == "H0STASP0":  # 주식호가tr 일경우의 처리 단계
+                            print("#### 주식호가 ####")
+                            stockhoka(recvstr[3])
+                            await asyncio.sleep(0.5)
+
+                        elif trid0 == "H0STCNT0":  # 주식체결 데이터 처리
+                            print("#### 주식체결 ####")
+                            data_cnt = int(recvstr[2])  # 체결데이터 개수
+                            stockspurchase(data_cnt, recvstr[3])
+                            await asyncio.sleep(0.5)
+
+                    elif data[0] == '1':
+                        recvstr = data.split('|')  # 수신데이터가 실데이터 이전은 '|'로 나뉘어져있어 split
+                        trid0 = recvstr[1]
+                        if trid0 == "K0STCNI0" or trid0 == "K0STCNI9" or trid0 == "H0STCNI0" or trid0 == "H0STCNI9":  # 주실체결 통보 처리
+                            stocksigningnotice(recvstr[3], aes_key, aes_iv)
+
+                    # clearConsole()
+                    # break;
+                else:
+                    jsonObject = json.loads(data)
+                    trid = jsonObject["header"]["tr_id"]
+
+                    if trid != "PINGPONG":
+                        rt_cd = jsonObject["body"]["rt_cd"]
+                        if rt_cd == '1':  # 에러일 경우
+                            print("### ERROR RETURN CODE [ %s ][ %s ] MSG [ %s ]" % (jsonObject["header"]["tr_key"], rt_cd, jsonObject["body"]["msg1"]))
+                            #break
+                        elif rt_cd == '0':  # 정상일 경우
+                            print("### RETURN CODE [ %s ][ %s ] MSG [ %s ]" % (jsonObject["header"]["tr_key"], rt_cd, jsonObject["body"]["msg1"]))
+                            # 체결통보 처리를 위한 AES256 KEY, IV 처리 단계
+                            if trid == "H0STCNI0" or trid == "H0STCNI9":
+                                aes_key = jsonObject["body"]["output"]["key"]
+                                aes_iv = jsonObject["body"]["output"]["iv"]
+                                print("### TRID [%s] KEY[%s] IV[%s]" % (trid, aes_key, aes_iv))
+
+                    elif trid == "PINGPONG":
+                        print("### RECV [PINGPONG] [%s]" % (data))
+                        
+                        # Add timestamp to ping messages
+                        print(f"### RECV TIME: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S.%f')}")
+                        print(f"### DATA LENGTH: {len(data)} bytes")
+                        print(f"### CONNECTION STATUS: Active")
+                        print(f"### MEMORY USAGE: {data.__sizeof__()} bytes")
+                        
+                        await websocket.pong(data)
+                        print("### SEND [PINGPONG] [%s]" % (data))
+
+    except Exception as e:
+        print('Exception Raised!')
+        print(e)
+        print('Connect Again!')
+        time.sleep(0.1)
+
+        # 웹소켓 다시 시작
+        await connect()     
