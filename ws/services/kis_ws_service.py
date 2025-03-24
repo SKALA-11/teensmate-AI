@@ -250,89 +250,6 @@ def on_open(ws):
     # 계좌체결발생통보 구독 (HTS ID는 환경변수나 인자로 받을 수 있음)
     subscribe(ws, KIS_WSReq.NOTICE, _connect_key, settings.KIS_HTS_ID)
 
-# --- 메인 웹소켓 연결 함수 ---
-def run_kis_websocket(app_key: str, secret_key: str, 
-                        stockcode: str = None, htsid: str = None, 
-                        custtype: str = None) -> dict:
-    """
-    REST API 호출 시 이 함수가 실행되어 KIS 웹소켓에 연결하고, 명령(cmd)에 따라
-    구독/해제 등의 동작을 수행한 후, 수신된 데이터를 간단히 반환합니다.
-    
-    이 함수는 동기 방식으로 동작하며, 웹소켓 연결 종료 후 마지막 수신 데이터를 반환합니다.
-    """
-    global _connect_key
-    try:
-        _connect_key = get_approval(app_key, secret_key)
-        logger.info("approval_key 발급 성공: %s", _connect_key)
-    except Exception as e:
-        return {"error": f"approval_key 발급 실패: {e}"}
-    
-    ws_url = settings.KIS_WS_BASE_URL
-    ws_app = websocket.WebSocketApp(ws_url,
-                                    on_open=on_open,
-                                    on_message=on_message,
-                                    on_error=on_error,
-                                    on_close=on_close)
-    # run_forever()는 블로킹 호출이므로 별도 스레드에서 실행
-    thread = Thread(target=ws_app.run_forever)
-    thread.start()
-    # 간단히 5초간 대기한 후, 종료 처리하고 결과 반환 (실제 환경에 맞게 조정)
-    time.sleep(5)
-    ws_app.close()
-    thread.join()
-    result = {"message": "WebSocket connection executed", "last_received": getattr(ws_app, 'last_message', {})}
-    return result
-
-
-# 국내주식호가 출력 포멧
-def stockhoka(data):
-    """ 넘겨받는데이터가 정상인지 확인
-    print("stockhoka[%s]"%(data))
-    """
-    recvvalue = data.split('^')  # 수신데이터를 split '^'
-
-    print("유가증권 단축 종목코드 [" + recvvalue[0] + "]")
-    print("영업시간 [" + recvvalue[1] + "]" + "시간구분코드 [" + recvvalue[2] + "]")
-    print("======================================")
-    print("매도호가10 [%s]    잔량10 [%s]" % (recvvalue[12], recvvalue[32]))
-    print("매도호가09 [%s]    잔량09 [%s]" % (recvvalue[11], recvvalue[31]))
-    print("매도호가08 [%s]    잔량08 [%s]" % (recvvalue[10], recvvalue[30]))
-    print("매도호가07 [%s]    잔량07 [%s]" % (recvvalue[9], recvvalue[29]))
-    print("매도호가06 [%s]    잔량06 [%s]" % (recvvalue[8], recvvalue[28]))
-    print("매도호가05 [%s]    잔량05 [%s]" % (recvvalue[7], recvvalue[27]))
-    print("매도호가04 [%s]    잔량04 [%s]" % (recvvalue[6], recvvalue[26]))
-    print("매도호가03 [%s]    잔량03 [%s]" % (recvvalue[5], recvvalue[25]))
-    print("매도호가02 [%s]    잔량02 [%s]" % (recvvalue[4], recvvalue[24]))
-    print("매도호가01 [%s]    잔량01 [%s]" % (recvvalue[3], recvvalue[23]))
-    print("--------------------------------------")
-    print("매수호가01 [%s]    잔량01 [%s]" % (recvvalue[13], recvvalue[33]))
-    print("매수호가02 [%s]    잔량02 [%s]" % (recvvalue[14], recvvalue[34]))
-    print("매수호가03 [%s]    잔량03 [%s]" % (recvvalue[15], recvvalue[35]))
-    print("매수호가04 [%s]    잔량04 [%s]" % (recvvalue[16], recvvalue[36]))
-    print("매수호가05 [%s]    잔량05 [%s]" % (recvvalue[17], recvvalue[37]))
-    print("매수호가06 [%s]    잔량06 [%s]" % (recvvalue[18], recvvalue[38]))
-    print("매수호가07 [%s]    잔량07 [%s]" % (recvvalue[19], recvvalue[39]))
-    print("매수호가08 [%s]    잔량08 [%s]" % (recvvalue[20], recvvalue[40]))
-    print("매수호가09 [%s]    잔량09 [%s]" % (recvvalue[21], recvvalue[41]))
-    print("매수호가10 [%s]    잔량10 [%s]" % (recvvalue[22], recvvalue[42]))
-    print("======================================")
-    print("총매도호가 잔량        [%s]" % (recvvalue[43]))
-    print("총매도호가 잔량 증감   [%s]" % (recvvalue[54]))
-    print("총매수호가 잔량        [%s]" % (recvvalue[44]))
-    print("총매수호가 잔량 증감   [%s]" % (recvvalue[55]))
-    print("시간외 총매도호가 잔량 [%s]" % (recvvalue[45]))
-    print("시간외 총매수호가 증감 [%s]" % (recvvalue[46]))
-    print("시간외 총매도호가 잔량 [%s]" % (recvvalue[56]))
-    print("시간외 총매수호가 증감 [%s]" % (recvvalue[57]))
-    print("예상 체결가            [%s]" % (recvvalue[47]))
-    print("예상 체결량            [%s]" % (recvvalue[48]))
-    print("예상 거래량            [%s]" % (recvvalue[49]))
-    print("예상체결 대비          [%s]" % (recvvalue[50]))
-    print("부호                   [%s]" % (recvvalue[51]))
-    print("예상체결 전일대비율    [%s]" % (recvvalue[52]))
-    print("누적거래량             [%s]" % (recvvalue[53]))
-    print("주식매매 구분코드      [%s]" % (recvvalue[58]))
-
 # 국내주식체결처리 출력 포멧
 def stockspurchase(data_cnt, data):
     print("============================================")
@@ -351,27 +268,6 @@ def stockspurchase(data_cnt, data):
         print("전일대비부호:", pValue[3])
         print("전일대비:", pValue[4])
         print("전일대비율:", pValue[5])
-
-# 국내주식체결통보 출력 포멧 
-def stocksigningnotice(data, key, iv):
-    # AES256 처리 
-    aes_dec_str = aes_cbc_base64_dec(key, iv, data)
-    pValue = aes_dec_str.split('^')
-
-    if pValue[13] == '2': # 체결통보 
-        print("#### 국내주식 체결 통보 ####")
-        menulist = "고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|체결수량|체결단가|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|체결종목명|신용구분|신용대출일자|체결종목명40|주문가격"
-        menustr1 = menulist.split('|')
-    else:
-        print("#### 국내주식 주문·정정·취소·거부 접수 통보 ####")
-        menulist = "고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|주문수량|주문가격|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|주문종목명|신용구분|신용대출일자|체결종목명40|체결단가"
-        menustr1 = menulist.split('|')
-    
-    i = 0
-    for menu in menustr1:
-        print("%s  [%s]" % (menu, pValue[i]))
-        i += 1
-
 
 async def connect(app_key: str, secret_key: str, 
                         stockcode: str = None, htsid: str = None, 
