@@ -1,12 +1,10 @@
 import os
-import sys
 import json
 import time
 import asyncio
 import logging
-import traceback
 import requests
-import websockets  # pip install websockets
+import websockets
 from base64 import b64decode
 from dotenv import load_dotenv
 from Crypto.Cipher import AES
@@ -70,11 +68,10 @@ class KisWsClient:
 
         try:
             async with websockets.connect(url, ping_interval=None) as websocket:
-                # 요청할 체결 종목 설정
                 code_list = [
-                    ['1', 'H0STCNT0', '005930'],
-                    ['1', 'H0STCNT0', '066570'],
-                    ['1', 'H0STCNT0', '000660']
+                    ['1', 'H0STCNT0', '005930'], # 삼성전자
+                    ['1', 'H0STCNT0', '066570'], # LG전자
+                    ['1', 'H0STCNT0', '000660'], # SK하이닉스
                 ]
                 senddata_list = []
                 for i, j, k in code_list:
