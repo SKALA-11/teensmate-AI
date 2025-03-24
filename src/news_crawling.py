@@ -10,6 +10,7 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import Document
 import os
+import hashlib
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -110,18 +111,43 @@ def summarize_article(title, content):
 # 6. 전체 파이프라인 실행
 # ================================
 news_results = []
+hash_set = set()
 
+# 기존 저장된 뉴스가 있다면 로드 + 해시셋 생성
+if os.path.exists("summarized_news.json"):
+    with open("summarized_news.json", "r", encoding="utf-8") as f:
+        existing_data = json.load(f)
+        for item in existing_data:
+            url_hash = hashlib.sha256(item["url"].encode()).hexdigest()
+            hash_set.add(url_hash)
+        news_results = existing_data  # 이어서 저장
+
+# 본격적인 뉴스 수집
+# 본격적인 뉴스 수집
 for topic in topics:
     print(f"[크롤링 중] {topic}")
-    articles = get_naver_news_links(topic, 20)
+    articles = get_naver_news_links(topic, 5)
     for article in articles:
         link = article['link']
         title = article['title']
         date = article['date']
+
+        url_hash = hashlib.sha256(link.encode()).hexdigest()
+        if url_hash in hash_set:
+            print(f"⚠️ 중복 URL 건너뜀: {link}")
+            continue  # 이미 수집된 뉴스는 스킵
+
         content = get_article_text(link)
-        if not content:
-            continue
         summary = summarize_article(title, content)
+        # if not content:
+        #     continue
+
+        try:
+            summary = summarize_article(title, content)
+        except Exception as e:
+            print(f"❌ 요약 실패: {e}")
+            continue
+
         news_results.append({
             "title": title,
             "summary": summary,
@@ -129,7 +155,8 @@ for topic in topics:
             "date": date,
             "topic": topic
         })
-        time.sleep(1.5)  # API rate 제한 보호
+        hash_set.add(url_hash)  # 중복 방지를 위해 해시 추가
+        time.sleep(1.5)  # OpenAI API rate limit 보호
 
 # ================================
 # 7. JSON 저장
