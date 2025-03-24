@@ -345,6 +345,10 @@ def stockspurchase(data_cnt, data):
         for menu in menustr:
             print("%-13s[%s]" % (menu, pValue[i]))
             i += 1
+        print("주식현재가:", pValue[2])
+        print("전일대비부호:", pValue[3])
+        print("전일대비:", pValue[4])
+        print("전일대비율:", pValue[5])
 
 # 국내주식체결통보 출력 포멧 
 def stocksigningnotice(data, key, iv):
@@ -385,6 +389,8 @@ async def connect(app_key: str, secret_key: str,
             print("1.주식호가, 2.주식호가해제, 3.주식체결, 4.주식체결해제, 5.주식체결통보(고객), 6.주식체결통보해제(고객), 7.주식체결통보(모의), 8.주식체결통보해제(모의)")
             print("Input Command :")
             cmd = input().rstrip()
+            
+            # cmd = '3'
 
             # 입력값 체크
             if cmd < '0' or cmd > '9':

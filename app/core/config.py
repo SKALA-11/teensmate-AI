@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # 거래 ID: ahdml 투자용
     KIS_TR_ID: str = "VTTC01010100"
     
-    KIS_HTS_ID: str = "@2522083"
+    KIS_HTS_ID: str
 
     class Config:
         env_file = "env/.env"

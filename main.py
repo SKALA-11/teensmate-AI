@@ -7,8 +7,6 @@ import asyncio
 import traceback
 import websockets
 
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
 from base64 import b64decode
 
 from app.core.config import settings
