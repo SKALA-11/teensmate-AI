@@ -1,23 +1,28 @@
 DEFAULT_INITIAL_BALANCE = 10_000_000
 
+
 class User:
     def __init__(self, initial_balance: int = DEFAULT_INITIAL_BALANCE):
-        self.balance = initial_balance
-        self.portfolio = {}  # {stock_name: quantity}
+        self._balance = initial_balance
+        self._portfolio = {}
 
-    def buy_stock(self, stock: 'Stock', quantity: int) -> bool:
-        total_cost = stock.price * quantity
-        if total_cost <= self.balance:
-            self.balance -= total_cost
-            self.portfolio[stock.name] = self.portfolio.get(stock.name, 0) + quantity
-            return True
-        return False
+    @property
+    def balance(self):
+        return self._balance
 
-    def sell_stock(self, stock: 'Stock', quantity: int) -> bool:
-        if stock.name in self.portfolio and self.portfolio[stock.name] >= quantity:
-            self.balance += stock.price * quantity
-            self.portfolio[stock.name] -= quantity
-            if self.portfolio[stock.name] == 0:
-                del self.portfolio[stock.name]
-            return True
-        return False
+    @property
+    def portfolio(self):
+        return self._portfolio.copy()
+
+    def buy_stock(self, stock_name: str, stock_price: int, quantity: int):
+        total_cost = stock_price * quantity
+        if total_cost <= self._balance:
+            self._balance -= total_cost
+            self._portfolio[stock_name] = self._portfolio.get(stock_name, 0) + quantity
+
+    def sell_stock(self, stock_name: str, stock_price: int, quantity: int):
+        if stock_name in self._portfolio and self._portfolio[stock_name] >= quantity:
+            self._balance += stock_price * quantity
+            self._portfolio[stock_name] -= quantity
+            if self._portfolio[stock_name] == 0:
+                del self._portfolio[stock_name]
