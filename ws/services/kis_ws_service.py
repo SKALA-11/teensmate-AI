@@ -284,10 +284,6 @@ async def connect(app_key: str, secret_key: str,
 
     try:
         async with websockets.connect(url, ping_interval=None) as websocket:
-            print("1.주식호가, 2.주식호가해제, 3.주식체결, 4.주식체결해제, 5.주식체결통보(고객), 6.주식체결통보해제(고객), 7.주식체결통보(모의), 8.주식체결통보해제(모의)")
-            print("Input Command :")
-            
-            # cmd = '3'
             
             code_list = [['1','H0STCNT0','005930'],['1','H0STCNT0','066570'],['1','H0STCNT0','000660']]
             senddata_list = []
@@ -323,8 +319,6 @@ async def connect(app_key: str, secret_key: str,
                     elif data[0] == '1':
                         recvstr = data.split('|')  # 수신데이터가 실데이터 이전은 '|'로 나뉘어져있어 split
                         trid0 = recvstr[1]
-                        if trid0 == "K0STCNI0" or trid0 == "K0STCNI9" or trid0 == "H0STCNI0" or trid0 == "H0STCNI9":  # 주실체결 통보 처리
-                            stocksigningnotice(recvstr[3], aes_key, aes_iv)
 
                     # clearConsole()
                     # break;
