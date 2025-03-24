@@ -9,8 +9,8 @@ import websockets
 
 from base64 import b64decode
 
-from app.core.config import settings
-from app.services.kis_ws_service import connect
+from core.config import settings
+from services.kis_ws_service import connect
 
 clearConsole = lambda: os.system('cls' if os.name in ('nt', 'dos') else 'clear')
 

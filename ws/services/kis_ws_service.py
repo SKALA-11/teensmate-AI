@@ -19,7 +19,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 from base64 import b64decode
 
-from app.core.config import settings
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -343,8 +343,10 @@ def stockspurchase(data_cnt, data):
     for cnt in range(data_cnt):  # 넘겨받은 체결데이터 개수만큼 print 한다
         print("### [%d / %d]" % (cnt + 1, data_cnt))
         for menu in menustr:
-            print("%-13s[%s]" % (menu, pValue[i]))
+            # print("%-13s[%s]" % (menu, pValue[i]))
             i += 1
+        print("종목코드", pValue[0])
+        print("주식체결시간:", pValue[1])
         print("주식현재가:", pValue[2])
         print("전일대비부호:", pValue[3])
         print("전일대비:", pValue[4])
@@ -388,54 +390,21 @@ async def connect(app_key: str, secret_key: str,
         async with websockets.connect(url, ping_interval=None) as websocket:
             print("1.주식호가, 2.주식호가해제, 3.주식체결, 4.주식체결해제, 5.주식체결통보(고객), 6.주식체결통보해제(고객), 7.주식체결통보(모의), 8.주식체결통보해제(모의)")
             print("Input Command :")
-            cmd = input().rstrip()
             
             # cmd = '3'
+            
+            code_list = [['1','H0STCNT0','005930'],['1','H0STCNT0','066570'],['1','H0STCNT0','000660']]
+            senddata_list = []
+            for i, j, k in code_list:
+                temp = '{"header":{"approval_key": "%s","custtype":"P","tr_type":"%s","content-type":"utf-8"},"body":{"input":{"tr_id":"%s","tr_key":"%s"}}}'%(_connect_key,i,j,k)
+                senddata_list.append(temp)
 
-            # 입력값 체크
-            if cmd < '0' or cmd > '9':
-                print("> Wrong Input Data", cmd)
-                
-            elif cmd == '0':
-                print("Exit!!")
+            # print('Input Command is :', senddata)
 
-            # 입력값에 따라 전송 데이터셋 구분 처리
-            if cmd == '1':         # 주식호가 등록
-                tr_id = 'H0STASP0'
-                tr_type = '1'
-            elif cmd == '2':       # 주식호가 등록해제
-                tr_id = 'H0STASP0'
-                tr_type = '2'
-            elif cmd == '3':       # 주식체결 등록
-                tr_id = 'H0STCNT0'
-                tr_type = '1'
-            elif cmd == '4':       # 주식체결 등록해제
-                tr_id = 'H0STCNT0'
-                tr_type = '2'
-            elif cmd == '5':       # 주식체결통보 등록(고객용)
-                tr_id = 'H0STCNI0' # 고객체결통보
-                tr_type = '1'
-            elif cmd == '6':       # 주식체결통보 등록해제(고객용)
-                tr_id = 'H0STCNI0' # 고객체결통보
-                tr_type = '2'
-            elif cmd == '7':       # 주식체결통보 등록(모의)
-                tr_id = 'H0STCNI9' # 테스트용 직원체결통보
-                tr_type = '1'
-            elif cmd == '8':       # 주식체결통보 등록해제(모의)
-                tr_id = 'H0STCNI9' # 테스트용 직원체결통보
-                tr_type = '2'
-            else:
-                senddata = 'wrong inert data'
-
-            # send json, 체결통보는 tr_key 입력항목이 다르므로 분리
-            if cmd == '5' or cmd == '6' or cmd == '7' or cmd == '8':
-                senddata = '{"header":{"approval_key":"' + _connect_key + '","custtype":"' + custtype + '","tr_type":"' + tr_type + '","content-type":"utf-8"},"body":{"input":{"tr_id":"' + tr_id + '","tr_key":"' + htsid + '"}}}'
-            else:
-                senddata = '{"header":{"approval_key":"' + _connect_key + '","custtype":"' + custtype + '","tr_type":"' + tr_type + '","content-type":"utf-8"},"body":{"input":{"tr_id":"' + tr_id + '","tr_key":"' + stockcode + '"}}}'
-
-            print('Input Command is :', senddata)
-
-            await websocket.send(senddata)
+            # await websocket.send(senddata)
+            for senddata in senddata_list:
+                await websocket.send(senddata)
+            
             await asyncio.sleep(0.5)
 
             # 데이터가 오길 기다린다.
@@ -450,16 +419,10 @@ async def connect(app_key: str, secret_key: str,
                     if data[0] == '0':
                         recvstr = data.split('|')  # 수신데이터가 실데이터 이전은 '|'로 나뉘어져있어 split 해야 함
                         trid0 = recvstr[1]
-                        if trid0 == "H0STASP0":  # 주식호가tr 일경우의 처리 단계
-                            print("#### 주식호가 ####")
-                            stockhoka(recvstr[3])
-                            await asyncio.sleep(0.5)
-
-                        elif trid0 == "H0STCNT0":  # 주식체결 데이터 처리
-                            print("#### 주식체결 ####")
-                            data_cnt = int(recvstr[2])  # 체결데이터 개수
-                            stockspurchase(data_cnt, recvstr[3])
-                            await asyncio.sleep(0.5)
+                        print("#### 주식체결 ####")
+                        data_cnt = int(recvstr[2])  # 체결데이터 개수
+                        stockspurchase(data_cnt, recvstr[3])
+                        await asyncio.sleep(0.5)
 
                     elif data[0] == '1':
                         recvstr = data.split('|')  # 수신데이터가 실데이터 이전은 '|'로 나뉘어져있어 split
@@ -488,13 +451,6 @@ async def connect(app_key: str, secret_key: str,
 
                     elif trid == "PINGPONG":
                         print("### RECV [PINGPONG] [%s]" % (data))
-                        
-                        # Add timestamp to ping messages
-                        print(f"### RECV TIME: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S.%f')}")
-                        print(f"### DATA LENGTH: {len(data)} bytes")
-                        print(f"### CONNECTION STATUS: Active")
-                        print(f"### MEMORY USAGE: {data.__sizeof__()} bytes")
-                        
                         await websocket.pong(data)
                         print("### SEND [PINGPONG] [%s]" % (data))
 
