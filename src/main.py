@@ -1,24 +1,29 @@
 #! /usr/bin/env python3
+import asyncio
 import time
 import threading
 from draw import Draw
+from kis_ws_client import KisWsClient
+from stock import Stock
 from stock_simulation import StockSimulation
 
-
-def update_prices(simulation):
-    while True:
-        simulation.update_stock_prices()
-        time.sleep(1)
+# 실시간 모의 투자 주식 종목
+STOCKS = [
+    Stock("Samsung Electronics", "005930"),
+    Stock("LG Electronics", "066570"),
+    Stock("SK Hynix", "000660"),
+]
 
 
 def main():
-    simulation = StockSimulation()
+    client = KisWsClient(STOCKS)
+    stock_update_thread = threading.Thread(
+        target=lambda: asyncio.run(client.run()), daemon=True
+    )
+    stock_update_thread.start()
+
+    simulation = StockSimulation(STOCKS)
     drawer = Draw(simulation)
-
-    price_update_thread = threading.Thread(target=update_prices, args=(simulation,))
-    price_update_thread.daemon = True
-    price_update_thread.start()
-
     drawer.run()
 
 
