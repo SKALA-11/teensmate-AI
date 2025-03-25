@@ -1,11 +1,13 @@
 import gradio as gr
 import matplotlib.pyplot as plt
+from chatbot import ChatBot
 from stock_simulation import StockSimulation
 
 
 class Draw:
-    def __init__(self, simulation: StockSimulation):
+    def __init__(self, simulation: StockSimulation, chatbot: ChatBot):
         self._simulation = simulation
+        self._chatbot = chatbot
 
     def _create_chart(self, stock_name: str):
         if not stock_name:
@@ -40,25 +42,46 @@ class Draw:
 
     def create_interface(self) -> gr.Blocks:
         with gr.Blocks() as interface:
-            gr.Markdown("# Stock Trading Simulation")
+            gr.Markdown("# AI Stock System")
 
-            with gr.Row():
-                balance = gr.Number(
-                    label="Current Balance", value=self._simulation.user.balance
+            with gr.Column():
+                gr.Markdown("## Stock Trading Simulation")
+                with gr.Row():
+                    balance = gr.Number(
+                        label="Current Balance", value=self._simulation.user.balance
+                    )
+                    portfolio = gr.DataFrame(
+                        headers=["Stock", "Quantity", "Current Value"]
+                    )
+
+                with gr.Row():
+                    stock_select = gr.Dropdown(
+                        choices=self._simulation.get_stock_names(), label="Select Stock"
+                    )
+                    quantity = gr.Number(label="Quantity", value=1, precision=0)
+
+                with gr.Row():
+                    buy_btn = gr.Button("Buy")
+                    sell_btn = gr.Button("Sell")
+
+                chart = gr.Plot(label="Stock Price History")
+
+            with gr.Column():
+                gr.Markdown("## AI 투자 도우미")
+                chatbot = gr.Chatbot(height=400)
+                msg = gr.Textbox(
+                    label="투자 관련 질문을 입력하세요",
+                    placeholder="예: SK하이닉스에 대해 알려주세요",
                 )
-                portfolio = gr.DataFrame(headers=["Stock", "Quantity", "Current Value"])
+                clear = gr.Button("대화 내용 지우기")
 
-            with gr.Row():
-                stock_select = gr.Dropdown(
-                    choices=self._simulation.get_stock_names(), label="Select Stock"
-                )
-                quantity = gr.Number(label="Quantity", value=1, precision=0)
+                def user_input(message, history):
+                    response = self._chatbot.run_query(message)
+                    history.append((message, response))
+                    return "", history
 
-            with gr.Row():
-                buy_btn = gr.Button("Buy")
-                sell_btn = gr.Button("Sell")
-
-            chart = gr.Plot(label="Stock Price History")
+                msg.submit(user_input, inputs=[msg, chatbot], outputs=[msg, chatbot])
+                clear.click(lambda: None, None, chatbot, queue=False)
 
             buy_btn.click(
                 self._handle_buy,
