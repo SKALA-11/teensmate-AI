@@ -2,6 +2,7 @@
 import asyncio
 import time
 import threading
+from chatbot import ChatBot
 from draw import Draw
 from kis_ws_client import KisWsClient
 from stock import Stock
@@ -23,7 +24,9 @@ def main():
     stock_update_thread.start()
 
     simulation = StockSimulation(STOCKS)
-    drawer = Draw(simulation)
+    chatbot = ChatBot()
+
+    drawer = Draw(simulation, chatbot)
     drawer.run()
 
 
