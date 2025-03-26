@@ -7,8 +7,11 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
-from langchain.schema import Document
+from langchain.prompts import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
 from langchain.schema.output_parser import StrOutputParser
 
 
@@ -16,25 +19,30 @@ class ValueChainChatBot:
     def __init__(self):
         load_dotenv()
         openai.api_key = os.getenv("OPENAI_API_KEY")
-        
+
         self.llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2, max_tokens=2048)
         self.value_chain_db = self.load_vector_store("crawler/chroma_valchain_db")
-        
+
     def load_vector_store(self, persist_directory: str) -> Chroma:
-        return Chroma(persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
-    
+        return Chroma(
+            persist_directory=persist_directory, embedding_function=OpenAIEmbeddings()
+        )
+
     def encode_image(self, image):
         buffered = io.BytesIO()
         image_format = image.format if image.format else "JPEG"
         image.save(buffered, format=image_format)
         buffered.seek(0)
-        return base64.b64encode(buffered.getvalue()).decode('utf-8')
-    
+        return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
     def image_analyzer(self, image) -> str:
         image = self.encode_image(image)
 
-        image_prompt = ChatPromptTemplate.from_messages([
-            ('system', """
+        image_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """
 YOU ARE A MULTIMODAL INDUSTRIAL INTELLIGENCE ANALYST.
 
 YOUR TASK IS TO ANALYZE AN IMAGE CONTAINING TEXT, LOGOS, PRODUCTS, OR CORPORATE MATERIALS AND RETURN THE MOST RELEVANT PRODUCT NAME THAT REPRESENTS THE IMAGE. THIS KEYWORD WILL BE USED AS THE TARGET FOR A VALUE CHAIN ANALYSIS AGENT.
@@ -84,20 +92,30 @@ YOUR TASK IS TO ANALYZE AN IMAGE CONTAINING TEXT, LOGOS, PRODUCTS, OR CORPORATE 
 
 🖼️ Input Image: 기아 EV6 차량 사진  
 ✅ Output: Kia EV6
-            """),
-            ('user',[{"type": "image_url",
-                    "image_url": {"url": "data:image/jpeg;base64,{image}"},
-                    }])
-        ])
+            """,
+                ),
+                (
+                    "user",
+                    [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": "data:image/jpeg;base64,{image}"},
+                        }
+                    ],
+                ),
+            ]
+        )
 
         image_chain = image_prompt | self.llm | StrOutputParser()
 
-        stuff_data = image_chain.invoke({'image':image}) # 이미지를 제품 or 회사 or 산업으로 분류
+        stuff_data = image_chain.invoke(
+            {"image": image}
+        )  # 이미지를 제품 or 회사 or 산업으로 분류
 
-        return stuff_data # str
-    
+        return stuff_data  # str
+
     def value_chain_analyzer(self, query: str) -> str:
-        
+
         combined_info = ""
         edu_docs = self.value_chain_db.search(query, search_type="mmr", k=5)
         if edu_docs:
@@ -106,7 +124,7 @@ YOUR TASK IS TO ANALYZE AN IMAGE CONTAINING TEXT, LOGOS, PRODUCTS, OR CORPORATE 
                 + "\n\n".join([doc.page_content for doc in edu_docs])
                 + "\n\n"
             )
-        
+
         prompt_messages = [
             SystemMessagePromptTemplate.from_template(
                 """
@@ -293,15 +311,15 @@ YOU ARE A WORLD-CLASS VALUE CHAIN ANALYST WITH 20 YEARS OF EXPERIENCE IN PROMPT 
 
 답변:
                 """
-            )
+            ),
         ]
-        
+
         chatbot_prompt = ChatPromptTemplate.from_messages(prompt_messages)
         chatbot_chain = chatbot_prompt | self.llm | StrOutputParser()
-        
+
         answer = chatbot_chain.invoke({"combined_info": combined_info, "query": query})
         return answer
-    
+
     def run_query(self, image, message):
         if image is not None:
             message = self.image_analyzer(image)
