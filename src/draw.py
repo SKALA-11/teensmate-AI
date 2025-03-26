@@ -1,3 +1,4 @@
+import datetime
 import gradio as gr
 import matplotlib.pyplot as plt
 from chatbot import ChatBot
@@ -20,7 +21,8 @@ class Draw:
             plt.figure(figsize=(10, 6))
             plt.plot([float(price) for price in stock.price_history])
             plt.title(f"{stock_name} Price History")
-            plt.xlabel("Time")
+            plt.xlabel(datetime.date.today())
+            plt.xticks([])
             plt.ylabel("Price (₩)")
             plt.grid(True)
             return plt
@@ -145,6 +147,9 @@ class Draw:
                 outputs=[balance, portfolio],
             )
             stock_select.change(
+                self._create_chart, inputs=[stock_select], outputs=[chart]
+            )
+            gr.Timer().tick(
                 self._create_chart, inputs=[stock_select], outputs=[chart]
             )
 
