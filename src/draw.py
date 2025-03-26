@@ -1,9 +1,6 @@
 import datetime
 import gradio as gr
 import matplotlib.pyplot as plt
-from chatbot import ChatBot
-from value_chain_chatbot import ValueChainChatBot
-from stock_simulation import StockSimulation
 
 
 class Draw:
@@ -18,12 +15,14 @@ class Draw:
 
         stock = self._simulation.get_stock(stock_name)
         if stock:
+            plt.rcParams["font.family"] = "Malgun Gothic"
+            plt.rcParams["axes.unicode_minus"] = False
             plt.figure(figsize=(10, 6))
             plt.plot([float(price) for price in stock.price_history])
-            plt.title(f"{stock_name} Price History")
-            plt.xlabel(datetime.date.today())
+            plt.title(f"{stock_name} 주가")
+            plt.xlabel(f"날짜: {datetime.date.today()}")
             plt.xticks([])
-            plt.ylabel("Price (₩)")
+            plt.ylabel("가격 (₩)")
             plt.grid(True)
             return plt
         return None
@@ -45,73 +44,99 @@ class Draw:
         return self._get_portfolio_display()
 
     def create_interface(self) -> gr.Blocks:
-        with gr.Blocks() as interface:
-            gr.Markdown("# AI Stock System")
+        with gr.Blocks(theme=gr.themes.Soft()) as interface:
+            gr.Markdown("# 🎯 청소년 주식 투자 교실")
 
-            with gr.Column():
-                gr.Markdown("## Stock Trading Simulation")
-                with gr.Row():
-                    balance = gr.Number(
-                        label="Current Balance", value=self._simulation.user.balance
-                    )
-                    portfolio = gr.DataFrame(
-                        headers=["Stock", "Quantity", "Current Value"]
-                    )
+            with gr.Row():
+                with gr.Column(scale=1):
+                    gr.Markdown("## 💰 내 투자 현황")
 
-                with gr.Row():
-                    stock_select = gr.Dropdown(
-                        choices=self._simulation.get_stock_names(), label="Select Stock"
-                    )
-                    quantity = gr.Number(label="Quantity", value=1, precision=0)
+                    gr.Markdown("### 🛒 주식 거래")
+                    chart = gr.Plot(label="실시간 주가")
 
-                with gr.Row():
-                    buy_btn = gr.Button("Buy")
-                    sell_btn = gr.Button("Sell")
+                    with gr.Row(equal_height=True):
+                        with gr.Column(scale=2):
+                            stock_select = gr.Dropdown(
+                                choices=self._simulation.get_stock_names(),
+                                label="거래할 종목 선택",
+                            )
+                        with gr.Column(scale=1):
+                            quantity = gr.Number(
+                                label="거래 수량", value=1, precision=0
+                            )
 
-                chart = gr.Plot(label="Stock Price History")
+                    with gr.Row():
+                        buy_btn = gr.Button(
+                            "매수하기 📈", variant="secondary", size="lg"
+                        )
+                        sell_btn = gr.Button(
+                            "매도하기 📉", variant="secondary", size="lg"
+                        )
 
-            with gr.Column():
-                gr.Markdown("## AI 투자 도우미")
-                
-                with gr.Tab("도우미1"):
-                    chatbot = gr.Chatbot(height=400)
-                    msg = gr.Textbox(
-                        label="투자 관련 질문을 입력하세요",
-                        placeholder="예: SK하이닉스에 대해 알려주세요",
-                    )
-                    clear = gr.Button("대화 내용 지우기")
-                        
+                    gr.Markdown("### 📊 계좌 정보")
+                    with gr.Row(equal_height=True):
+                        with gr.Column(scale=1):
+                            balance = gr.Number(
+                                label="보유 현금",
+                                value=self._simulation.user.balance,
+                                container=True,
+                            )
+                        with gr.Column(scale=2):
+                            portfolio = gr.DataFrame(
+                                headers=["종목명", "보유 수량", "현재 가치"],
+                                wrap=True,
+                            )
+
+                with gr.Column(scale=1):
+                    gr.Markdown("## 🤖 AI 투자 상담")
+
+                    with gr.Tab("💡 투자 도우미"):
+                        chatbot = gr.Chatbot(height=400)
+                        msg = gr.Textbox(
+                            label="궁금한 점을 자유롭게 물어보세요!",
+                            placeholder="예: SK하이닉스는 어떤 회사인가요?",
+                        )
+                        clear = gr.Button("대화 내용 지우기 🗑️")
+
+                    with gr.Tab("🔍 기업 분석"):
+                        value_chain_chatbot = gr.Chatbot(height=400)
+                        image = gr.Image(
+                            label="기업 관련 이미지를 올려주세요", type="pil"
+                        )
+                        value_chain_msg = gr.Textbox(
+                            label="기업이나 산업에 대해 물어보세요",
+                            placeholder="예: 전기차 배터리 산업을 설명해주세요",
+                        )
+                        value_chain_clear = gr.Button("대화 내용 지우기 🗑️")
+
                     def chatbot_input(message, history):
                         response = self._chatbot.run_query(message)
                         history.append((message, response))
                         return "", history
 
-                    msg.submit(chatbot_input, inputs=[msg, chatbot], outputs=[msg, chatbot])
+                    msg.submit(
+                        chatbot_input, inputs=[msg, chatbot], outputs=[msg, chatbot]
+                    )
                     clear.click(lambda: None, None, chatbot, queue=False)
 
-                with gr.Tab("도우미2"):
-                    value_chain_chatbot = gr.Chatbot(height=400)
-                    image = gr.Image(label="분석할 이미지를 업로드하세요", type="pil")
-                    value_chain_msg = gr.Textbox(
-                        label="이미지 업로드가 되지 않으면 입력하세요",
-                        placeholder="예: 전기차 배터리에 대해 알려주세요",
-                    )
-                    value_chain_clear = gr.Button("대화 내용 지우기")
-                    
                     def image_input(image, history):
                         try:
                             if image is not None:
-                                response = self._value_chain_chatbot.run_query(image, "")
+                                response = self._value_chain_chatbot.run_query(
+                                    image, ""
+                                )
                                 history.append(("이미지 업로드", response))
                         except Exception as e:
                             response = f"오류가 발생했습니다: {str(e)}"
                             history.append(("오류", response))
-                        return None, history
+                        return history
 
                     def text_input(message, history):
                         try:
                             if message:
-                                response = self._value_chain_chatbot.run_query(None, message)
+                                response = self._value_chain_chatbot.run_query(
+                                    None, message
+                                )
                                 history.append((message, response))
                             else:
                                 response = "질문을 입력해주세요."
@@ -120,20 +145,23 @@ class Draw:
                             response = f"오류가 발생했습니다: {str(e)}"
                             history.append(("오류", response))
                         return "", history
-                    
+
                     image.change(
                         image_input,
                         inputs=[image, value_chain_chatbot],
-                        outputs=[image, value_chain_chatbot],
+                        outputs=[value_chain_chatbot],
                     )
-                    
+
                     value_chain_msg.submit(
                         text_input,
                         inputs=[value_chain_msg, value_chain_chatbot],
                         outputs=[value_chain_msg, value_chain_chatbot],
                     )
                     value_chain_clear.click(
-                        lambda: None, None, value_chain_chatbot, queue=False
+                        lambda: (None, None),
+                        None,
+                        [value_chain_chatbot, image],
+                        queue=False,
                     )
 
             buy_btn.click(
@@ -149,9 +177,7 @@ class Draw:
             stock_select.change(
                 self._create_chart, inputs=[stock_select], outputs=[chart]
             )
-            gr.Timer().tick(
-                self._create_chart, inputs=[stock_select], outputs=[chart]
-            )
+            gr.Timer().tick(self._create_chart, inputs=[stock_select], outputs=[chart])
 
         return interface
 
