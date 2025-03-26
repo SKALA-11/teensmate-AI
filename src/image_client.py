@@ -14,11 +14,11 @@ class ImageClient:
         self.llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2, max_tokens=1024)
 
     def encode_image(self, image_path):
-        with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
-        
+        with open(image_path, "rb") as image_file: # 이미지 파일을 바이너리 모드로 읽어옴
+            return base64.b64encode(image_file.read()).decode('utf-8') # 이미지를 base64로 인코딩
+    
     def run_image_query(self) -> str:
-        image = self.encode_image("src/images/grandeur.jpg")
+        image = self.encode_image("src/images/grandeur.jpg") # 로컬 이미지라 수정 필요
 
         image_prompt = ChatPromptTemplate.from_messages([
             ('system', """
@@ -74,9 +74,9 @@ YOUR TASK IS TO ANALYZE AN IMAGE CONTAINING TEXT, LOGOS, PRODUCTS, OR CORPORATE 
 
         image_chain = image_prompt | self.llm | StrOutputParser()
 
-        stuff_data = image_chain.invoke({'image':image})
+        stuff_data = image_chain.invoke({'image':image}) # 이미지를 제품 or 회사 or 산업으로 분류
 
-        return stuff_data
+        return stuff_data # str
 
 
 # imageClient = ImageClient()

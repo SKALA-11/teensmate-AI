@@ -206,13 +206,9 @@ YOUR TASK IS TO:
         ]
         
         chatbot_prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        # print("----------------------")
-        # print("chatbot_prompt:", chatbot_prompt)
-        # print("----------------------")
         chatbot_chain = chatbot_prompt | self.llm | StrOutputParser()
         
         answer = chatbot_chain.invoke({"combined_info": combined_info, "query": query})
-        # print(answer)
         return answer
 
 
