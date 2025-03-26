@@ -32,8 +32,9 @@ class Education:
         # 기본 설정
         self.playlist_urls = [
             'https://www.youtube.com/playlist?list=PLolOdz0YW978hU2Cvx0Qh_CXAkUGjlWM-',
-            'https://www.youtube.com/watch?v=Mmc0i_4Snzs&list=PLInzA_7L93Ij65cq-rRnMwZb3Za-ABk7I',
-            'https://www.youtube.com/watch?v=DoF66o5UdtY&list=PLInzA_7L93Ihl7VjsqMqHtkT1bbn-dhnH'
+            'https://www.youtube.com/playlist?list=PLInzA_7L93Ihb1H9m_6rPUyvRvIx4p_VJ',
+            'https://www.youtube.com/playlist?list=PLInzA_7L93Ij65cq-rRnMwZb3Za-ABk7I',
+            'https://www.youtube.com/playlist?list=PLpezlh5x80cv5dwniDgE4M6JsjmcfRx2d'
         ]
         self.chroma_dir = chroma_dir
         self.transcript_extractor = YouTubeTranscriptExtractor(transcript_folder)
