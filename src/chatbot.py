@@ -1,9 +1,8 @@
 import os
 import openai
 from dotenv import load_dotenv
-from langchain.vectorstores import Chroma
-from langchain.embeddings import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
+from langchain_chroma import Chroma
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.schema.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -21,9 +20,9 @@ class ChatBot:
         self.llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2, max_tokens=1024)
 
         # 각 DB 로드
-        self.edu_db = self.load_vector_store("chroma_edu_db")
-        self.news_db = self.load_vector_store("chroma_news_db")
-        self.report_db = self.load_vector_store("chroma_report_db")
+        self.edu_db = self.load_vector_store("./crawler/chroma_edu_db")
+        self.news_db = self.load_vector_store("./crawler/chroma_news_db")
+        self.report_db = self.load_vector_store("./crawler/chroma_report_db")
 
     def load_vector_store(self, persist_directory: str) -> Chroma:
         """
