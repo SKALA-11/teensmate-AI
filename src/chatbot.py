@@ -3,13 +3,8 @@ import openai
 from dotenv import load_dotenv
 from langchain.vectorstores import Chroma
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain.schema.messages import SystemMessage, HumanMessage, AIMessage
-from langchain_core.prompts import (
-    ChatPromptTemplate,
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
-)
-from langchain.schema import Document
+from langchain.schema.messages import SystemMessage, HumanMessage
+from langchain_core.prompts import ChatPromptTemplate
 
 
 class ChatBot:

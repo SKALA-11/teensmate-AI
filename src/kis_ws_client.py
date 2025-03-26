@@ -9,7 +9,6 @@ from base64 import b64decode
 from dotenv import load_dotenv
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
-from stock import Stock
 
 KIS_BASE_URL = "https://openapivts.koreainvestment.com:29443"
 KIS_WS_BASE_URL = "ws://ops.koreainvestment.com:31000/tryitout"
