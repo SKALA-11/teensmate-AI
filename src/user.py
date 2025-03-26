@@ -15,6 +15,8 @@ class User:
         return self._portfolio.copy()
 
     def buy_stock(self, stock_name: str, stock_price: int, quantity: int):
+        if stock_price == 0:
+            return
         total_cost = stock_price * quantity
         if total_cost <= self._balance:
             self._balance -= total_cost
