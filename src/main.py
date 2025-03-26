@@ -3,6 +3,7 @@ import asyncio
 import time
 import threading
 from chatbot import ChatBot
+from value_chain_chatbot import ValueChainChatBot
 from draw import Draw
 from kis_ws_client import KisWsClient
 from stock import Stock
@@ -25,8 +26,9 @@ def main():
 
     simulation = StockSimulation(STOCKS)
     chatbot = ChatBot()
+    value_chain_chatbot = ValueChainChatBot()
 
-    drawer = Draw(simulation, chatbot)
+    drawer = Draw(simulation, chatbot, value_chain_chatbot)
     drawer.run()
 
 

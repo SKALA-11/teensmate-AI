@@ -1,13 +1,15 @@
 import gradio as gr
 import matplotlib.pyplot as plt
 from chatbot import ChatBot
+from value_chain_chatbot import ValueChainChatBot
 from stock_simulation import StockSimulation
 
 
 class Draw:
-    def __init__(self, simulation: StockSimulation, chatbot: ChatBot):
+    def __init__(self, simulation, chatbot, value_chain_chatbot):
         self._simulation = simulation
         self._chatbot = chatbot
+        self._value_chain_chatbot = value_chain_chatbot
 
     def _create_chart(self, stock_name: str):
         if not stock_name:
@@ -68,20 +70,69 @@ class Draw:
 
             with gr.Column():
                 gr.Markdown("## AI 투자 도우미")
-                chatbot = gr.Chatbot(height=400)
-                msg = gr.Textbox(
-                    label="투자 관련 질문을 입력하세요",
-                    placeholder="예: SK하이닉스에 대해 알려주세요",
-                )
-                clear = gr.Button("대화 내용 지우기")
+                
+                with gr.Tab("도우미1"):
+                    chatbot = gr.Chatbot(height=400)
+                    msg = gr.Textbox(
+                        label="투자 관련 질문을 입력하세요",
+                        placeholder="예: SK하이닉스에 대해 알려주세요",
+                    )
+                    clear = gr.Button("대화 내용 지우기")
+                        
+                    def chatbot_input(message, history):
+                        response = self._chatbot.run_query(message)
+                        history.append((message, response))
+                        return "", history
 
-                def user_input(message, history):
-                    response = self._chatbot.run_query(message)
-                    history.append((message, response))
-                    return "", history
+                    msg.submit(chatbot_input, inputs=[msg, chatbot], outputs=[msg, chatbot])
+                    clear.click(lambda: None, None, chatbot, queue=False)
 
-                msg.submit(user_input, inputs=[msg, chatbot], outputs=[msg, chatbot])
-                clear.click(lambda: None, None, chatbot, queue=False)
+                with gr.Tab("도우미2"):
+                    value_chain_chatbot = gr.Chatbot(height=400)
+                    image = gr.Image(label="분석할 이미지를 업로드하세요", type="pil")
+                    value_chain_msg = gr.Textbox(
+                        label="이미지 업로드가 되지 않으면 입력하세요",
+                        placeholder="예: 전기차 배터리에 대해 알려주세요",
+                    )
+                    value_chain_clear = gr.Button("대화 내용 지우기")
+                    
+                    def image_input(image, history):
+                        try:
+                            if image is not None:
+                                response = self._value_chain_chatbot.run_query(image, "")
+                                history.append(("이미지 업로드", response))
+                        except Exception as e:
+                            response = f"오류가 발생했습니다: {str(e)}"
+                            history.append(("오류", response))
+                        return None, history
+
+                    def text_input(message, history):
+                        try:
+                            if message:
+                                response = self._value_chain_chatbot.run_query(None, message)
+                                history.append((message, response))
+                            else:
+                                response = "질문을 입력해주세요."
+                                history.append(("", response))
+                        except Exception as e:
+                            response = f"오류가 발생했습니다: {str(e)}"
+                            history.append(("오류", response))
+                        return "", history
+                    
+                    image.change(
+                        image_input,
+                        inputs=[image, value_chain_chatbot],
+                        outputs=[image, value_chain_chatbot],
+                    )
+                    
+                    value_chain_msg.submit(
+                        text_input,
+                        inputs=[value_chain_msg, value_chain_chatbot],
+                        outputs=[value_chain_msg, value_chain_chatbot],
+                    )
+                    value_chain_clear.click(
+                        lambda: None, None, value_chain_chatbot, queue=False
+                    )
 
             buy_btn.click(
                 self._handle_buy,
