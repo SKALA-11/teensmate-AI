@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     naver_client_secret: Optional[str] = Field(None, env="NAVER_CLIENT_SECRET")
     
     # 한국투자증권 API
+    kis_hts_id: Optional[str] = Field(None, env="KIS_HTS_ID")
     kis_app_key: Optional[str] = Field(None, env="KIS_APP_KEY")
     kis_app_secret: Optional[str] = Field(None, env="KIS_APP_SECRET")
     
@@ -51,12 +52,13 @@ class Settings(BaseSettings):
     debug: bool = Field(False, env="DEBUG")
     log_level: str = Field("INFO", env="LOG_LEVEL")
     
-    # FastAPI 설정
-    api_host: str = Field("0.0.0.0", env="API_HOST")
-    api_port: int = Field(8000, env="API_PORT")
-    api_reload: bool = Field(True, env="API_RELOAD")
+    # Backend 설정
+    backend_host: str = Field("0.0.0.0", env="BACKEND_HOST")
+    backend_port: int = Field(8000, env="BACKEND_PORT")
+    backend_reload: bool = Field(True, env="BACKEND_RELOAD")
     
     # Streamlit 설정
+    streamlit_host: str = Field("0.0.0.0", env="STREAMLIT_HOST")
     streamlit_port: int = Field(8501, env="STREAMLIT_PORT")
     
     @validator("openai_api_key", always=True)
