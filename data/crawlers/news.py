@@ -13,7 +13,7 @@ from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 
 from data.crawlers.base import BaseCrawler

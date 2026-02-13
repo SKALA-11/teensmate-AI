@@ -15,7 +15,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.schema import Document
+from langchain_core.documents import Document
 from dotenv import load_dotenv
 from ChromaDB import ChromaDBWrapper
 

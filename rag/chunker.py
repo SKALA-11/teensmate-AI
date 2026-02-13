@@ -5,11 +5,11 @@ Semantic Chunker
 """
 
 from typing import List, Optional
-from langchain.text_splitter import (
+from langchain_text_splitters import (
     RecursiveCharacterTextSplitter,
     CharacterTextSplitter
 )
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from config.logging import get_logger
 

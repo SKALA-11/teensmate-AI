@@ -7,17 +7,17 @@ Chat Page
 import streamlit as st
 from agents.orchestrator import AgentOrchestrator
 
-# 오케스트레이터 초기화 (세션 상태로 관리)
-if "orchestrator" not in st.session_state:
-    st.session_state.orchestrator = AgentOrchestrator(enable_memory=True)
-
-# 채팅 히스토리 초기화
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
 
 def main():
     """채팅 페이지"""
+    
+    # 오케스트레이터 초기화 (세션 상태로 관리)
+    if "orchestrator" not in st.session_state:
+        st.session_state.orchestrator = AgentOrchestrator(enable_memory=True)
+    
+    # 채팅 히스토리 초기화
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
     
     st.title("💬 AI 경제 교육 챗봇")
     st.markdown("경제, 투자, 금융에 대해 무엇이든 물어보세요!")
@@ -25,10 +25,10 @@ def main():
     # 채팅 히스토리 초기화 버튼
     col1, col2 = st.columns([6, 1])
     with col2:
-        if st.button("🗑️ 대화 초기화", use_container_width=True):
+        if st.button("🗑️ 대화 초기화", width='stretch'):
             st.session_state.messages = []
-            st.session_state.orchestrator.clear_memory()
-            st.success("대화를 초기화했습니다!")
+            if "orchestrator" in st.session_state:
+                st.session_state.orchestrator.clear_memory()
             st.rerun()
     
     # 채팅 히스토리 표시
@@ -86,7 +86,7 @@ def main():
     cols = st.columns(2)
     for i, question in enumerate(sample_questions):
         with cols[i % 2]:
-            if st.button(question, key=f"sample_{i}", use_container_width=True):
+            if st.button(question, key=f"sample_{i}", width='stretch'):
                 st.session_state.messages.append({
                     "role": "user",
                     "content": question

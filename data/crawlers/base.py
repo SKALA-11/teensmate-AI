@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from pathlib import Path
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 from rag.vector_store import VectorStoreManager
 from config.logging import get_logger
 

@@ -5,7 +5,7 @@ Report Agent
 """
 
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_react_agent
+from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
 
 from tools.vector_search import ReportSearchTool

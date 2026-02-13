@@ -48,14 +48,13 @@ class ImageAnalyzerTool(BaseTool):
     """
     args_schema: Type[BaseModel] = ImageAnalyzerInput
     
-    def __init__(self):
-        super().__init__()
-        self.llm = ChatOpenAI(
-            model=settings.default_model,
-            temperature=0.1,
-            max_tokens=512
-        )
-        self.prompt_template = ValueChainAnalystPrompt()
+    # Pydantic 필드로 선언
+    llm: ChatOpenAI = Field(default_factory=lambda: ChatOpenAI(
+        model=settings.default_model,
+        temperature=0.1,
+        max_tokens=512
+    ))
+    prompt_template: ValueChainAnalystPrompt = Field(default_factory=ValueChainAnalystPrompt)
     
     def _encode_image(self, image: Union[str, Image.Image]) -> str:
         """

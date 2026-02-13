@@ -4,11 +4,10 @@ Agent Orchestrator
 LangGraph 기반 Multi-Agent 워크플로우 오케스트레이터
 """
 
-from typing import TypedDict, Annotated, Sequence, List
+from typing import TypedDict, Annotated, Sequence, List, Dict
 from operator import add
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from langchain.memory import ConversationBufferMemory
 
 from agents.router import RouterAgent, QueryType
 from agents.education import EducationAgent
@@ -48,13 +47,9 @@ class AgentOrchestrator:
         self.report_agent = ReportAgent()
         self.value_chain_agent = ValueChainAgent()
         
-        # Memory
+        # Memory - 간단한 딕셔너리 기반
         self.enable_memory = enable_memory
-        if enable_memory:
-            self.memory = ConversationBufferMemory(
-                return_messages=True,
-                memory_key="chat_history"
-            )
+        self.memory_store: Dict[str, List[BaseMessage]] = {}
         
         # Workflow 구축
         self.workflow = self._build_workflow()
@@ -232,8 +227,7 @@ class AgentOrchestrator:
             # 메모리에서 이전 대화 가져오기
             chat_history = []
             if self.enable_memory:
-                memory_vars = self.memory.load_memory_variables({})
-                chat_history = memory_vars.get("chat_history", [])
+                chat_history = self.memory_store.get(session_id, [])
             
             # 초기 상태
             initial_state: AgentState = {
@@ -256,10 +250,10 @@ class AgentOrchestrator:
             
             # 메모리 저장
             if self.enable_memory:
-                self.memory.save_context(
-                    {"input": query},
-                    {"output": answer}
-                )
+                if session_id not in self.memory_store:
+                    self.memory_store[session_id] = []
+                self.memory_store[session_id].append(HumanMessage(content=query))
+                self.memory_store[session_id].append(AIMessage(content=answer))
             
             logger.info("Orchestrator 실행 완료")
             return answer
@@ -268,8 +262,12 @@ class AgentOrchestrator:
             logger.error(f"Orchestrator 오류: {e}", exc_info=True)
             return f"답변 생성 중 오류가 발생했습니다: {str(e)}"
     
-    def clear_memory(self):
+    def clear_memory(self, session_id: str = None):
         """메모리 초기화"""
         if self.enable_memory:
-            self.memory.clear()
-            logger.info("메모리 초기화 완료")
+            if session_id:
+                self.memory_store.pop(session_id, None)
+                logger.info(f"세션 {session_id} 메모리 초기화 완료")
+            else:
+                self.memory_store.clear()
+                logger.info("전체 메모리 초기화 완료")

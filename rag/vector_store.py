@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from config.settings import settings
 from config.logging import get_logger

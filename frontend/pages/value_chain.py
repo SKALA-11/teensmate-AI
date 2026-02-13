@@ -8,13 +8,13 @@ import streamlit as st
 from PIL import Image
 from agents.orchestrator import AgentOrchestrator
 
-# 오케스트레이터 초기화
-if "vc_orchestrator" not in st.session_state:
-    st.session_state.vc_orchestrator = AgentOrchestrator(enable_memory=False)
-
 
 def main():
     """밸류체인 분석 페이지"""
+    
+    # 오케스트레이터 초기화
+    if "vc_orchestrator" not in st.session_state:
+        st.session_state.vc_orchestrator = AgentOrchestrator(enable_memory=False)
     
     st.title("🏭 밸류체인 분석")
     st.markdown("제품이나 기업의 가치사슬을 분석하고 한국 기업의 참여를 확인하세요!")
@@ -37,7 +37,7 @@ def main():
             placeholder="분석하고 싶은 제품이나 산업을 입력하세요..."
         )
         
-        if st.button("🔍 분석 시작", type="primary", use_container_width=True):
+        if st.button("🔍 분석 시작", type="primary", width='stretch'):
             if not query:
                 st.warning("분석할 대상을 입력해주세요!")
             else:
@@ -73,9 +73,9 @@ def main():
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
                 image = Image.open(uploaded_file)
-                st.image(image, caption="업로드된 이미지", use_container_width=True)
+                st.image(image, caption="업로드된 이미지", width='stretch')
             
-            if st.button("🔍 이미지 분석 시작", type="primary", use_container_width=True):
+            if st.button("🔍 이미지 분석 시작", type="primary", width='stretch'):
                 with st.spinner("이미지를 분석하고 밸류체인을 조사하고 있습니다..."):
                     try:
                         # 임시 파일로 저장
@@ -135,6 +135,6 @@ def main():
     cols = st.columns(2)
     for i, sample in enumerate(samples):
         with cols[i % 2]:
-            if st.button(sample, key=f"vc_sample_{i}", use_container_width=True):
+            if st.button(sample, key=f"vc_sample_{i}", width='stretch'):
                 st.session_state.vc_sample = sample
                 st.rerun()

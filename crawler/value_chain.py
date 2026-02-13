@@ -1,11 +1,10 @@
 import os
 import glob
-from langchain.schema import Document
-from langchain.vectorstores import Chroma
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_core.documents import Document
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.schema import Document
 import pandas as pd
 from langchain_community.document_loaders import DataFrameLoader
 from dotenv import load_dotenv

@@ -38,18 +38,18 @@ read -p "선택 (1-3): " choice
 case $choice in
     1)
         echo "🔥 Backend 실행 중..."
-        uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+        PYTHONPATH=$(pwd) uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
         ;;
     2)
         echo "🎨 Frontend 실행 중..."
-        uv run streamlit run frontend/app.py
+        PYTHONPATH=$(pwd) uv run streamlit run frontend/app.py
         ;;
     3)
         echo "🔥 Backend & Frontend 실행 중..."
-        uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000 &
+        PYTHONPATH=$(pwd) uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000 &
         BACKEND_PID=$!
         sleep 2
-        uv run streamlit run frontend/app.py &
+        PYTHONPATH=$(pwd) uv run streamlit run frontend/app.py &
         FRONTEND_PID=$!
         
         echo ""

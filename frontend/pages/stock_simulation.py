@@ -113,7 +113,7 @@ def main():
     col1, col2 = st.columns([1, 5])
     
     with col1:
-        if st.button("🚀 시작", use_container_width=True, disabled=st.session_state.is_running):
+        if st.button("🚀 시작", width='stretch', disabled=st.session_state.is_running):
             # Stock 객체 생성
             st.session_state.stocks = [
                 Stock(name=s["name"], code=s["code"])
@@ -124,7 +124,7 @@ def main():
             st.rerun()
     
     with col2:
-        if st.button("⏹️ 중지", use_container_width=True, disabled=not st.session_state.is_running):
+        if st.button("⏹️ 중지", width='stretch', disabled=not st.session_state.is_running):
             st.session_state.is_running = False
             st.session_state.ws_client = None
             st.info("데이터 수신 중지")
@@ -146,13 +146,13 @@ def main():
             })
         
         df = pd.DataFrame(stock_data)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width='stretch', hide_index=True)
         
         # 실시간 차트
         if any(len(s.price_history) > 1 for s in st.session_state.stocks):
             st.markdown("#### 📈 가격 추이")
             chart = create_price_chart(st.session_state.stocks)
-            st.plotly_chart(chart, use_container_width=True)
+            st.plotly_chart(chart, width='stretch')
         else:
             st.info("⏳ 데이터 수신 중... 잠시만 기다려주세요.")
         

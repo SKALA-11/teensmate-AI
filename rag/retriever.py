@@ -5,8 +5,7 @@ Hybrid Retriever
 """
 
 from typing import List, Dict, Any, Optional
-from langchain.schema import Document
-from langchain.retrievers import EnsembleRetriever
+from langchain_core.documents import Document
 from langchain_community.retrievers import BM25Retriever
 
 from rag.vector_store import VectorStoreManager

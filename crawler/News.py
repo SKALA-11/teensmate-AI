@@ -5,7 +5,7 @@ import hashlib
 import requests
 import openai
 from bs4 import BeautifulSoup
-from langchain.schema import Document
+from langchain_core.documents import Document
 from dotenv import load_dotenv
 from ChromaDB import ChromaDBWrapper
 
