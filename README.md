@@ -1,155 +1,230 @@
-# teensmate-AI
+# TeensMate AI 🏦💡
 
-## Use
+> 청소년을 위한 AI 경제 교육 챗봇 - LangChain/LangGraph Multi-Agent RAG System
 
-### Install 
-관리자 권한으로 실행 추천
-  
-1. 가상 환경 설정 및 활성
-    ```
-    python -m venv venv
-    venv/Scripts/activate
-    ```
-2. 의존성 설치
-    ```
-    pip install -r requirements.txt
-    ```
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.129.0-green.svg)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.43.2-red.svg)](https://streamlit.io/)
+[![LangChain](https://img.shields.io/badge/LangChain-1.2.10-yellow.svg)](https://www.langchain.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-0.2.55-orange.svg)](https://www.langchain.com/langgraph)
 
-### Run
-1. 프로그램 실행
-    ```
-    python3 ./src/main.py
-    ```
+## 📖 소개
 
-## 소스 코드 설명 (Explain of Source Codes)
+TeensMate AI는 청소년이 경제, 투자, 금융을 쉽게 이해할 수 있도록 돕는 AI 기반 교육 챗봇입니다. LangChain/LangGraph를 사용한 Multi-Agent 시스템으로 구현되어 있으며, RAG (Retrieval-Augmented Generation)를 통해 정확하고 최신의 경제 정보를 제공합니다.
 
-### Crawler
+### 주요 기능
 
-####  `ChromaDB.py`
+- 💬 **AI 채팅**: 경제 용어, 투자 개념을 쉽게 설명
+- 🏭 **밸류체인 분석**: 제품/산업의 가치사슬 분석, 이미지 인식 지원
+- 📊 **주식 시뮬레이션**: 가상 투자 체험 (향후 추가 예정)
+- 🔍 **하이브리드 검색**: BM25 + Vector Similarity 결합
+- 🤖 **Multi-Agent**: Router, Education, News, Report, ValueChain 에이전트
 
-<img src="img/image.png" width="150" alt="ChromaDB 구조">
+## 🏗️ 아키텍처
 
-**ChromaDB의 동작 과정 (질문 → 답변)**
+```
+┌─────────────────┐
+│  Streamlit UI   │  ← 사용자 인터페이스
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  FastAPI        │  ← REST API 백엔드
+│  Backend        │
+└────────┬────────┘
+         │
+┌────────▼────────────────────────┐
+│  LangGraph Orchestrator         │  ← Multi-Agent 워크플로우
+│  ┌──────────────────────────┐  │
+│  │  Router Agent            │  │  쿼리 분류
+│  └──────────┬───────────────┘  │
+│             │                   │
+│     ┌───────┴────────┐         │
+│     ▼                ▼         │
+│  Education      Value Chain    │  전문 에이전트
+│  News           Report         │
+│  └─────┬────────────┘          │
+└────────┼───────────────────────┘
+         │
+┌────────▼────────┐
+│  RAG System     │
+│  ┌────────────┐ │
+│  │ ChromaDB   │ │  ← Vector Store (읽기 전용)
+│  │ (edu,      │ │
+│  │  news,     │ │
+│  │  report,   │ │
+│  │  valchain) │ │
+│  └────────────┘ │
+│  ┌────────────┐ │
+│  │ Hybrid     │ │  ← BM25 + Vector 검색
+│  │ Retriever  │ │
+│  └────────────┘ │
+└─────────────────┘
+```
 
-1. **사용자가 질문 입력**  
-    예: `아이폰을 만드는데 벨류 체인이 뭐야`
+## 🚀 빠른 시작
 
-2. **질문을 벡터로 변환 (OpenAI 임베딩)**  
-    ```python
-    embedded_query = OpenAIEmbeddings(질문)
-    ```
+### 필수 요구사항
 
-3. **ChromaDB에서 유사한 문서 검색 (코사인 유사도 비교)**  
-    - `embedded_query`와 ChromaDB에 저장된 문서 벡터 비교
-    - 코사인 유사도가 높은 문서(가장 관련 있는 문서) 검색
+- Python 3.12+
+- [uv](https://github.com/astral-sh/uv) (패키지 매니저)
+- Azure OpenAI API 키
 
-4. **관련 문서 + 질문을 OpenAI로 전달**  
-    ```python
-    context = "검색된 문서 내용"
-    ```
-    - OpenAI에게 `context + 사용자 질문`을 전달하고 답변 생성 요청
+### 설치
 
-5. **최종 답변 출력**  
-    - OpenAI가 `context + 질문`을 기반으로 답변 생성 후 사용자에게 출력
+1. **저장소 클론**
+   ```bash
+   git clone <repository-url>
+   cd teensmate-AI
+   ```
 
-**효과:** ChromaDB의 코사인 유사도를 활용하여 질문과 관련된 강의(영상) 내용을 빠르게 검색 가능
+2. **환경변수 설정**
+   ```bash
+   cp .env.example .env
+   # .env 파일을 열어 API 키 입력
+   ```
+
+3. **의존성 설치**
+   ```bash
+   uv sync
+   ```
+
+### 실행
+
+#### 로컬 실행
+
+```bash
+# Backend (FastAPI)
+uvicorn backend.main:app --reload
+# → http://localhost:8000/docs
+
+# Frontend (Streamlit)
+streamlit run frontend/app.py
+# → http://localhost:8501
+```
+
+#### Docker 실행
+
+```bash
+docker-compose up --build
+# Backend: http://localhost:8000
+# Frontend: http://localhost:8501
+```
+
+## ⚙️ 환경변수
+
+`.env` 파일에 다음 환경변수를 설정하세요:
+
+### 필수
+
+```bash
+# Azure OpenAI
+AOAI_ENDPOINT=https://your-resource.openai.azure.com/
+AOAI_API_KEY=your-api-key
+AOAI_DEPLOY_GPT4O_MINI=gpt-4o-mini
+AOAI_DEPLOY_GPT4O=gpt-4o
+AOAI_DEPLOY_EMBED_3_LARGE=text-embedding-3-large
+AOAI_DEPLOY_EMBED_3_SMALL=text-embedding-3-small
+AOAI_DEPLOY_EMBED_ADA=text-embedding-ada-002
+```
+
+### 선택 (향후 기능)
+
+```bash
+# 한국투자증권 API (주식 데이터)
+KIS_HTS_ID=your-hts-id
+KIS_APP_KEY=your-app-key
+KIS_APP_SECRET=your-app-secret
+
+# Naver API (뉴스 크롤링)
+NAVER_CLIENT_ID=your-client-id
+NAVER_CLIENT_SECRET=your-client-secret
+```
+
+## 📚 프로젝트 구조
+
+```
+teensmate-AI/
+├── config/              # 환경 설정
+│   ├── settings.py      # Pydantic Settings
+│   └── logging.py       # 로깅 설정
+├── prompts/             # AI 프롬프트 템플릿
+│   ├── base.py
+│   ├── economic_educator.py
+│   ├── investment_analyst.py
+│   └── value_chain_analyst.py
+├── agents/              # LangGraph 에이전트
+│   ├── router.py        # 라우터
+│   ├── education.py     # 교육
+│   ├── news.py          # 뉴스
+│   ├── report.py        # 리포트
+│   ├── value_chain.py   # 밸류체인
+│   └── orchestrator.py  # 오케스트레이터
+├── tools/               # ReAct Tools
+│   ├── vector_search.py
+│   └── image_analyzer.py
+├── rag/                 # RAG 컴포넌트
+│   ├── vector_store.py  # ChromaDB 관리
+│   ├── retriever.py     # 하이브리드 검색
+│   ├── chunker.py       # 텍스트 청킹
+│   └── embeddings.py    # 임베딩
+├── backend/             # FastAPI
+│   ├── main.py
+│   └── routers/
+│       ├── health.py
+│       └── chat.py
+├── frontend/            # Streamlit
+│   ├── app.py
+│   └── pages/
+│       ├── chat.py
+│       ├── value_chain.py
+│       └── stock_simulation.py
+├── data/                # 데이터 크롤러 (향후)
+│   └── crawlers/
+└── crawler/             # 기존 ChromaDB (읽기 전용)
+    ├── chroma_edu_db/
+    ├── chroma_news_db/
+    ├── chroma_report_db/
+    └── chroma_valchain_db/
+```
+
+## 🎯 주요 기술 스택
+
+- **LLM**: Azure OpenAI (GPT-4o, GPT-4o-mini)
+- **Framework**: LangChain, LangGraph
+- **Vector DB**: ChromaDB (읽기 전용)
+- **Backend**: FastAPI
+- **Frontend**: Streamlit
+- **Deployment**: Docker, Docker Compose
+
+## 🔒 데이터 보호
+
+**기존 ChromaDB는 읽기 전용으로 보호됩니다:**
+- `VectorStoreManager`는 기본적으로 `read_only=True`
+- `add_documents()` 호출 시 `PermissionError` 발생
+- 기존 데이터(`chroma_edu_db`, `chroma_valchain_db` 등)는 안전하게 보존
+
+## 📖 API 문서
+
+Backend 실행 후 다음 URL에서 API 문서를 확인할 수 있습니다:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### 주요 엔드포인트
+
+- `POST /api/v1/chat` - 일반 채팅
+- `POST /api/v1/chat/stream` - 스트리밍 채팅
+- `POST /api/v1/chat/image` - 이미지 포함 채팅
+- `DELETE /api/v1/chat/session/{id}` - 세션 초기화
+- `GET /api/v1/health` - 헬스 체크
+
+## 🤝 기여
+
+이 프로젝트는 청소년 경제 교육을 위한 오픈소스 프로젝트입니다. 기여는 언제나 환영합니다!
+
+## 📄 라이선스
+
+MIT License
 
 ---
 
-####  `Education.py`
-
-<img src="img/image-1.png" width="120" alt="Education.py 흐름도">
-<img src="img/image-2.png" width="120" alt="트랜스크립트 추출 과정">
-
-1. YouTube 트랜스크립트 추출
-2. 텍스트 정제 및 노이즈 제거
-3. ChromaDB를 통한 문서 벡터화 및 저장
-4. 교육용 콘텐츠 검색 기능 제공
-
----
-
-####  `News.py`
-
-<img src="img/image-3.png" width="600" alt="News 구조">
-
-1. **키워드 기반 뉴스 분류 및 검색 최적화**  
-    - `brand_keywords`, `investment_keywords`, `industry_keywords`, `macro_keywords` 별로 뉴스 저장
-    - 특정 주제(예: "반도체", "2차전지")만 검색 가능
-
-2. **장기적인 데이터 분석 가능 (추세 파악)**  
-    - 특정 키워드(예: "코스피", "환율")의 변동 추이를 분석하여 경제 흐름 예측
-    - 예: "금리 인상" 키워드 등장 빈도 증가 → 시장 변동성 증가 가능성
-
-3. **데이터 기반 AI 금융 서비스 구축 가능**  
-    - RAG(Retrieval-Augmented Generation) 기반 챗봇으로 확장 가능
-    - AI가 최신 뉴스를 학습해 답변 제공 (예: "지금 반도체 산업 트렌드는?")
-
----
-
-####  `Report.py`
-
-<img src="img/image-4.png" width="600" alt="Report 구조">
-
-**삼성증권 리포트 PDF를 크롤링, 다운로드, 텍스트/이미지 추출, 투자 피드백 생성 및 Chroma 벡터 DB 저장까지 수행**
-
-**삼성증권 리포트를 활용하는 이유**  
-- 특정 기업에 대한 종합적인 금융 분석 제공
-- 투자 판단에 도움을 주는 핵심 데이터 확보 가능
-
----
-
-### 🧩 `Src` 내부 주요 코드
-
-####  `Chatbot.py`
-
-<img src="img/image-5.png" width="350" alt="Chatbot 구조">
-
-1. **사용자 쿼리 입력**  
-    - 사용자가 경제 관련 질문 입력
-
-2. **쿼리 분류 (`classify_query`)**  
-    - 질문 유형 분석
-    - 가능한 분류: `edu`, `news`, `report`, `all`, `nothing`
-
-3. **정보 검색 (`run_query`)**  
-    - 유형에 따라 해당 데이터베이스 검색
-    - 3개 데이터베이스 동시 검색 가능 (`Edu DB`, `News DB`, `Report DB`)
-
-4. **응답 생성**  
-    - `ChatOpenAI (GPT-4o)` 모델 사용
-    - 청소년을 위한 경제 정보 제공
-    - 쉬운 언어로 설명, 필요시 투자 추천 포함
-
----
-
-####  `draw.py`
-
-**주식 시뮬레이션 및 AI 기반 투자 조언을 제공하는 웹 애플리케이션**
-
-- 주식 거래 시뮬레이션 및 주가 변동 시각화 가능
-- AI 챗봇을 통한 투자 관련 조언 제공
-- 이미지 기반 분석을 활용한 가치 사슬 분석 기능 포함
-
----
-
-####  `kis_ws_client.py`
-
-<img src="img/image-6.png" width="350" alt="WebSocket 구조">
-
-**한국투자증권 API와 WebSocket을 활용하여 실시간 주식 데이터 수신**
-
-**WebSocket을 활용하는 이유**
-
-1. **실시간 데이터 스트리밍**  
-    - 주식 가격, 거래량 등은 초 단위로 변화
-    - WebSocket을 사용하면 변경된 데이터만 즉시 푸시(push) 가능 → HTTP Polling보다 빠르고 효율적
-
-2. **지속적인 연결 유지 (Persistent Connection)**  
-    - WebSocket은 한 번 연결되면 계속 열린 상태를 유지하며 데이터를 주고받을 수 있음
-    - 주식 거래는 연속적인 데이터 흐름이 필요하므로, 끊김 없는 지속적 연결이 중요
-
----
-
-##  마무리
-
-이 프로젝트는 **ChromaDB**, **LangChain**, **OpenAI**, **한국투자증권 API** 등을 활용하여 **경제 교육 및 투자 분석 AI 서비스**를 구축하는 것을 목표로 합니다.
+Made with ❤️ for teenagers learning economics
