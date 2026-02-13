@@ -24,14 +24,14 @@ class Settings(BaseSettings):
     aoai_deploy_embed_3_small: str = Field(..., env="AOAI_DEPLOY_EMBED_3_SMALL")
     aoai_deploy_embed_ada: str = Field(..., env="AOAI_DEPLOY_EMBED_ADA")
     
-    # Naver API (뉴스 크롤링용, 선택)
-    naver_client_id: Optional[str] = Field(None, env="NAVER_CLIENT_ID")
-    naver_client_secret: Optional[str] = Field(None, env="NAVER_CLIENT_SECRET")
+    # Naver API (필수)
+    naver_client_id: str = Field(..., env="NAVER_CLIENT_ID")
+    naver_client_secret: str = Field(..., env="NAVER_CLIENT_SECRET")
     
-    # 한국투자증권 API (선택)
-    kis_hts_id: Optional[str] = Field(None, env="KIS_HTS_ID")
-    kis_app_key: Optional[str] = Field(None, env="KIS_APP_KEY")
-    kis_app_secret: Optional[str] = Field(None, env="KIS_APP_SECRET")
+    # 한국투자증권 API (필수)
+    kis_hts_id: str = Field(..., env="KIS_HTS_ID")
+    kis_app_key: str = Field(..., env="KIS_APP_KEY")
+    kis_app_secret: str = Field(..., env="KIS_APP_SECRET")
     
     # ===== 하드코딩된 기본값 (환경변수 불필요) =====
     
