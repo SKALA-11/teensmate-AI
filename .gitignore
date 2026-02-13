@@ -194,6 +194,18 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode
 
+# Project specific
 value_chain_papers/
 value_chain_excel/
 images/
+
+# Logs directory
+logs/
+
+# ChromaDB 내부 파일 (기존 구조는 유지하되 변경사항은 무시)
+crawler/**/*.sqlite3
+crawler/**/*.parquet
+crawler/**/chroma.sqlite3
+
+# uv
+.python-version-default
