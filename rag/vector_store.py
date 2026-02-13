@@ -24,7 +24,8 @@ class VectorStoreManager:
         self,
         collection_name: str = "default",
         persist_directory: Optional[str] = None,
-        embedding_model: Optional[str] = None
+        embedding_model: Optional[str] = None,
+        read_only: bool = True  # 기본값을 읽기 전용으로 변경
     ):
         """
         Vector Store 초기화
@@ -33,9 +34,11 @@ class VectorStoreManager:
             collection_name: 컬렉션 이름 (edu, news, report, valchain 등)
             persist_directory: DB 저장 경로
             embedding_model: 임베딩 모델 (기본값: settings에서 가져옴)
+            read_only: 읽기 전용 모드 (True: 기존 DB 보호, False: 쓰기 허용)
         """
         self.collection_name = collection_name
         self.persist_directory = persist_directory or self._get_default_persist_dir()
+        self.read_only = read_only
         
         # 임베딩 초기화
         self.embedding = OpenAIEmbeddings(
@@ -46,10 +49,16 @@ class VectorStoreManager:
         self.db: Optional[Chroma] = None
         self._load_or_create_db()
         
-        logger.info(
-            f"Vector Store 초기화 완료: {self.collection_name} "
-            f"(경로: {self.persist_directory})"
-        )
+        if self.read_only:
+            logger.warning(
+                f"Vector Store '{self.collection_name}' 읽기 전용 모드로 초기화됨. "
+                f"기존 데이터는 보호됩니다."
+            )
+        else:
+            logger.info(
+                f"Vector Store 초기화 완료: {self.collection_name} "
+                f"(경로: {self.persist_directory})"
+            )
     
     def _get_default_persist_dir(self) -> str:
         """기본 persist 디렉토리 반환"""
@@ -96,6 +105,17 @@ class VectorStoreManager:
         Returns:
             추가된 문서 ID 리스트
         """
+        # 읽기 전용 모드 체크
+        if self.read_only:
+            logger.error(
+                f"Vector Store '{self.collection_name}'는 읽기 전용입니다. "
+                f"문서를 추가할 수 없습니다."
+            )
+            raise PermissionError(
+                f"Vector Store '{self.collection_name}' is read-only. "
+                f"Cannot add documents to protected database."
+            )
+        
         if not documents:
             logger.warning("추가할 문서가 없습니다.")
             return []
@@ -238,22 +258,23 @@ class VectorStoreManager:
         return self.db._collection.count()
 
 
-# 사전 정의된 Vector Store 인스턴스 생성 함수
+# 사전 정의된 Vector Store 인스턴스 생성 함수 (모두 읽기 전용)
 def get_edu_store() -> VectorStoreManager:
-    """교육 콘텐츠 Vector Store"""
-    return VectorStoreManager(collection_name="edu")
+    """교육 콘텐츠 Vector Store (읽기 전용)"""
+    return VectorStoreManager(collection_name="edu", read_only=True)
 
 
 def get_news_store() -> VectorStoreManager:
-    """뉴스 Vector Store"""
-    return VectorStoreManager(collection_name="news")
+    """뉴스 Vector Store (읽기 전용)"""
+    return VectorStoreManager(collection_name="news", read_only=True)
 
 
 def get_report_store() -> VectorStoreManager:
-    """리포트 Vector Store"""
-    return VectorStoreManager(collection_name="report")
+    """리포트 Vector Store (읽기 전용)"""
+    return VectorStoreManager(collection_name="report", read_only=True)
 
 
 def get_valchain_store() -> VectorStoreManager:
-    """밸류체인 Vector Store"""
-    return VectorStoreManager(collection_name="valchain")
+    """밸류체인 Vector Store (읽기 전용)"""
+    return VectorStoreManager(collection_name="valchain", read_only=True)
+

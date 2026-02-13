@@ -13,6 +13,8 @@ from pydantic import Field, validator
 class Settings(BaseSettings):
     """애플리케이션 설정"""
     
+    # ===== 환경변수에서 로드하는 필수 설정 =====
+    
     # Azure OpenAI 설정
     aoai_endpoint: str = Field(..., env="AOAI_ENDPOINT")
     aoai_api_key: str = Field(..., env="AOAI_API_KEY")
@@ -22,44 +24,47 @@ class Settings(BaseSettings):
     aoai_deploy_embed_3_small: str = Field(..., env="AOAI_DEPLOY_EMBED_3_SMALL")
     aoai_deploy_embed_ada: str = Field(..., env="AOAI_DEPLOY_EMBED_ADA")
     
-    # OpenAI 호환성 (기존 코드와 호환)
-    openai_api_key: Optional[str] = Field(None, env="OPENAI_API_KEY")
-    
-    # Naver API (뉴스 크롤링용)
+    # Naver API (뉴스 크롤링용, 선택)
     naver_client_id: Optional[str] = Field(None, env="NAVER_CLIENT_ID")
     naver_client_secret: Optional[str] = Field(None, env="NAVER_CLIENT_SECRET")
     
-    # 한국투자증권 API
+    # 한국투자증권 API (선택)
     kis_hts_id: Optional[str] = Field(None, env="KIS_HTS_ID")
     kis_app_key: Optional[str] = Field(None, env="KIS_APP_KEY")
     kis_app_secret: Optional[str] = Field(None, env="KIS_APP_SECRET")
     
-    # Vector Database 설정
-    chroma_persist_dir: str = Field("./crawler", env="CHROMA_PERSIST_DIR")
-    chroma_edu_db: str = Field("./crawler/chroma_edu_db", env="CHROMA_EDU_DB")
-    chroma_news_db: str = Field("./crawler/chroma_news_db", env="CHROMA_NEWS_DB")
-    chroma_report_db: str = Field("./crawler/chroma_report_db", env="CHROMA_REPORT_DB")
-    chroma_valchain_db: str = Field("./crawler/chroma_valchain_db", env="CHROMA_VALCHAIN_DB")
+    # ===== 하드코딩된 기본값 (환경변수 불필요) =====
+    
+    # OpenAI 호환성 (기존 코드와 호환)
+    openai_api_key: Optional[str] = None
+    
+    # Vector Database 설정 (읽기 전용, 기존 경로 유지)
+    chroma_persist_dir: str = "./crawler"
+    chroma_edu_db: str = "./crawler/chroma_edu_db"
+    chroma_news_db: str = "./crawler/chroma_news_db"
+    chroma_report_db: str = "./crawler/chroma_report_db"
+    chroma_valchain_db: str = "./crawler/chroma_valchain_db"
     
     # LLM 설정
-    default_model: str = Field("gpt-4o", env="DEFAULT_MODEL")
-    default_temperature: float = Field(0.2, env="DEFAULT_TEMPERATURE")
-    default_max_tokens: int = Field(2048, env="DEFAULT_MAX_TOKENS")
+    default_model: str = "gpt-4o"
+    default_temperature: float = 0.7
+    default_max_tokens: int = 2048
     
     # 애플리케이션 설정
-    app_name: str = Field("TeensMate-AI", env="APP_NAME")
-    app_version: str = Field("2.0.0", env="APP_VERSION")
-    debug: bool = Field(False, env="DEBUG")
-    log_level: str = Field("INFO", env="LOG_LEVEL")
+    app_name: str = "TeensMate-AI"
+    app_version: str = "2.0.0"
+    debug: bool = False
+    log_level: str = "INFO"
+    log_file: str = "./logs/app.log"
     
     # Backend 설정
-    backend_host: str = Field("0.0.0.0", env="BACKEND_HOST")
-    backend_port: int = Field(8000, env="BACKEND_PORT")
-    backend_reload: bool = Field(True, env="BACKEND_RELOAD")
+    backend_host: str = "0.0.0.0"
+    backend_port: int = 8000
+    backend_reload: bool = True
     
     # Streamlit 설정
-    streamlit_host: str = Field("0.0.0.0", env="STREAMLIT_HOST")
-    streamlit_port: int = Field(8501, env="STREAMLIT_PORT")
+    streamlit_host: str = "0.0.0.0"
+    streamlit_port: int = 8501
     
     @validator("openai_api_key", always=True)
     def set_openai_api_key(cls, v, values):
@@ -87,3 +92,4 @@ def get_settings() -> Settings:
 os.environ["OPENAI_API_KEY"] = settings.openai_api_key or settings.aoai_api_key
 os.environ["AZURE_OPENAI_ENDPOINT"] = settings.aoai_endpoint
 os.environ["AZURE_OPENAI_API_KEY"] = settings.aoai_api_key
+
