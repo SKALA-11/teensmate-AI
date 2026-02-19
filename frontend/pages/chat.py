@@ -19,8 +19,8 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
-    st.title("💬 AI 경제 교육 챗봇")
-    st.markdown("경제, 투자, 금융에 대해 무엇이든 물어보세요!")
+    st.title("💬 AI 경제·금융 상담")
+    st.markdown("사회 초년생의 금융 고민, AI에게 무엇이든 여쭤보세요!")
     
     # 채팅 히스토리 초기화 버튼
     col1, col2 = st.columns([6, 1])
@@ -80,10 +80,10 @@ def main():
     st.markdown("#### 💡 이런 질문을 해보세요!")
     
     sample_questions = [
-        "PER이란 무엇인가요?",
-        "반도체 산업 최근 동향은?",
-        "삼성전자 재무제표 분석해줘",
-        "인플레이션이 왜 일어나나요?",
+        "금리 인상이 내 주식 포트폴리오에 미치는 영향은?",
+        "HBM이란 무엇이고 어떤 한국 기업이 수혜받을까요?",
+        "배당주 투자 시 PER과 ROE를 어떻게 활용하나요?",
+        "환율이 오를 때 달러 ETF 투자해도 괜찮나요?",
     ]
     
     cols = st.columns(2)

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# TeensMate AI - Docker 실행 스크립트
+# NewMate AI - Docker 실행 스크립트
 
 set -e
 

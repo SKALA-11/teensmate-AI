@@ -1,7 +1,7 @@
 """
 Streamlit Main Application
 
-청소년을 위한 경제 교육 챗봇 UI
+사회 초년생을 위한 경제·금융 AI 가이드 UI
 """
 
 import streamlit as st
@@ -9,16 +9,16 @@ from pathlib import Path
 
 # 페이지 설정
 st.set_page_config(
-    page_title="TeensMate AI - 청소년 경제 교육",
-    page_icon="💰",
+    page_title="NewMate AI - 사회 초년생 경제 가이드",
+    page_icon="💼",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # 사이드바
 with st.sidebar:
-    st.title("💰 TeensMate AI")
-    st.markdown("### 청소년을 위한 경제 교육 챗봇")
+    st.title("� NewMate AI")
+    st.markdown("### 사회 초년생을 위한 경제·금융 AI 가이드")
     st.markdown("---")
     
     # 페이지 선택
@@ -32,13 +32,13 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("#### 📚 사용 가이드")
     st.markdown("""
-    - **채팅**: AI와 경제 관련 대화
-    - **주식 시뮬레이션**: 가상 투자 체험
+    - **채팅**: AI와 경제·금융 상담
+    - **주식 시뮬레이션**: 실시간 주가 조회
     - **밸류체인 분석**: 제품/산업 생태계 분석
     """)
     
     st.markdown("---")
-    st.info("💡 **Tip**: 이미지를 업로드하면 밸류체인을 자동으로 분석합니다!")
+    st.info("💡 **Tip**: 첫 월급, 연말정산, 주식 투자 등 무엇이든 여쭤보세요!")
 
 # 페이지 라우팅
 if page == "💬 채팅":

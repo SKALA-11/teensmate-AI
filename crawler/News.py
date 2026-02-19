@@ -44,7 +44,7 @@ class News:
         ]
         self.macro_keywords = [
             "금리 인상", "기준금리", "인플레이션", "환율", "달러 강세", "미국 증시", "코스피", "코스닥", 
-            "한국은행", "경제정책", "청년 지원금", "금융 교육", "청소년 경제교육", "Z세대 투자"
+            "한국은행", "경제정책", "청년 지원금", "금융 교육", "사회초년생", "Z세대 투자"
         ]
         self.topics = self.brand_keywords + self.investment_keywords + self.industry_keywords + self.macro_keywords
         

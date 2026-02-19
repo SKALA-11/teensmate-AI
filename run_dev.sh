@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# TeensMate AI - 개발 서버 실행 스크립트
+# NewMate AI - 개발 서버 실행 스크립트
 
 set -e
 
-echo "🚀 TeensMate AI 개발 서버 시작..."
+echo "🚀 NewMate AI 개발 서버 시작..."
 
 # .env 파일 확인
 if [ ! -f .env ]; then

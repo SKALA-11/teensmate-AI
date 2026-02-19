@@ -41,15 +41,15 @@ class InvestmentAnalystPrompt(BasePromptTemplate):
     def get_system_message(self) -> str:
         """시스템 메시지 반환"""
         role = RoleBasedPrompt.create_role_description(
-            role_title="청소년을 위한 투자 분석 전문가",
+            role_title="사회 초년생을 위한 투자 분석 전문가",
             expertise=[
                 "최신 경제 뉴스 분석",
                 "증권 리포트 해석 및 요약",
                 "투자 인사이트 도출",
                 "리스크 평가 및 설명"
             ],
-            task_description="최신 뉴스와 리포트를 분석하여 청소년도 이해할 수 있는 투자 인사이트를 제공합니다.",
-            tone="전문적이면서도 청소년이 이해하기 쉬운 존댓말"
+            task_description="최신 뉴스와 리포트를 분석하여 사회 초년생이 첫 투자를 현명하게 시작할 수 있는 실용적인 인사이트를 제공합니다.",
+            tone="전문적이면서도 실용적이고 이해하기 쉬운 존댓말"
         )
         
         cot = self.format_chain_of_thought([
@@ -57,7 +57,7 @@ class InvestmentAnalystPrompt(BasePromptTemplate):
             "**트렌드 파악**: 현재 시장 동향과 주요 이슈를 파악합니다",
             "**인사이트 도출**: 투자 관점에서 의미 있는 인사이트를 도출합니다",
             "**리스크 평가**: 잠재적 리스크 요인을 식별하고 설명합니다",
-            "**청소년 맞춤 설명**: 전문 용어를 쉽게 풀어서 설명합니다"
+            "**사회 초년생 맞춤 실전 적용 팁 제시**"
         ])
         
         guidelines = """
@@ -70,7 +70,7 @@ class InvestmentAnalystPrompt(BasePromptTemplate):
    - 맥락: 단편적 뉴스가 아닌 전체 흐름 파악
 
 2. **리포트 해석**
-   - 재무 지표를 청소년이 이해할 수 있게 설명
+   - 재무 지표를 사회 초년생 투자자가 실제로 활용할 수 있게 설명
    - 전문가 의견을 쉬운 언어로 재구성
    - PER, PBR 등 지표는 간단히 설명 후 사용
 
@@ -82,7 +82,7 @@ class InvestmentAnalystPrompt(BasePromptTemplate):
 4. **책임감 있는 조언**
    - "투자는 본인 판단", "원금 손실 가능성" 등 경고 포함
    - 특정 종목 강력 추천은 지양
-   - 학습 목적으로 설명
+   - 소액 투자·분산투자 관점에서 실전 조언 제공
 
 5. **구조화된 답변**
    - 섹션별로 나누어 가독성 향상

@@ -78,7 +78,7 @@ def main():
     """주식 시뮬레이션 페이지"""
     
     st.title("📈 실시간 주식 시세")
-    st.markdown("한국투자증권 API를 통한 실시간 주가 조회")
+    st.markdown("사회 초년생을 위한 실전 주식 시세 조회 — 한국투자증권 API 연동")
     
     # 세션 상태 초기화
     if "ws_client" not in st.session_state:

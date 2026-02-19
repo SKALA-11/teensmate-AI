@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     default_max_tokens: int = 2048
     
     # 애플리케이션 설정
-    app_name: str = "TeensMate-AI"
+    app_name: str = "NewMate AI"
     app_version: str = "2.0.0"
     debug: bool = False
     log_level: str = "INFO"
