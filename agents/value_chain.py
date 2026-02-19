@@ -4,9 +4,9 @@ Value Chain Agent
 밸류체인을 분석하는 에이전트
 """
 
-from langchain_openai import ChatOpenAI
-from langchain_classic.agents import AgentExecutor, create_react_agent
-from langchain_core.prompts import PromptTemplate
+from agents.llm import get_llm
+from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tools.vector_search import ValueChainSearchTool
 from tools.image_analyzer import ImageAnalyzerTool
@@ -21,8 +21,8 @@ class ValueChainAgent:
     """밸류체인 분석 에이전트"""
     
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.default_model,
+        self.llm = get_llm(
+            model_name=settings.default_model,
             temperature=settings.default_temperature,
             max_tokens=settings.default_max_tokens
         )
@@ -44,38 +44,18 @@ class ValueChainAgent:
     def _create_agent(self) -> AgentExecutor:
         """ReAct Agent 생성"""
         
-        react_prompt = PromptTemplate.from_template("""
-{system_message}
-
-도구를 사용하여 질문에 답변하세요.
-
-사용 가능한 도구:
-{tools}
-
-도구 이름: {tool_names}
-
-다음 형식을 사용하세요:
-
-Question: 답변해야 할 질문
-Thought: 무엇을 해야 할지 생각
-Action: 사용할 도구 ({tool_names} 중 하나)
-Action Input: 도구에 전달할 입력
-Observation: 도구의 결과
-... (필요한 만큼 반복)
-Thought: 이제 최종 답변을 알았습니다
-Final Answer: 원래 질문에 대한 최종 답변
-
-질문: {input}
-
-{agent_scratchpad}
-""")
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "{system_message}"),
+            ("human", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ])
         
         system_message = self.prompt_template.get_system_message()
         
-        agent = create_react_agent(
+        agent = create_tool_calling_agent(
             llm=self.llm,
             tools=self.tools,
-            prompt=react_prompt.partial(system_message=system_message)
+            prompt=prompt.partial(system_message=system_message)
         )
         
         return AgentExecutor(
@@ -85,6 +65,8 @@ Final Answer: 원래 질문에 대한 최종 답변
             max_iterations=5,  # 밸류체인은 더 많은 단계 필요
             handle_parsing_errors=True
         )
+    
+
     
     def run(self, query: str, image_path: str = None) -> str:
         """

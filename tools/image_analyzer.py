@@ -11,6 +11,8 @@ from PIL import Image
 from pydantic import BaseModel, Field
 from langchain.tools import BaseTool
 from langchain_openai import ChatOpenAI
+from langchain_core.messages import BaseMessage # Type hint용
+from agents.llm import get_llm
 
 from prompts.value_chain_analyst import ValueChainAnalystPrompt
 from config.settings import settings
@@ -49,8 +51,11 @@ class ImageAnalyzerTool(BaseTool):
     args_schema: Type[BaseModel] = ImageAnalyzerInput
     
     # Pydantic 필드로 선언
-    llm: ChatOpenAI = Field(default_factory=lambda: ChatOpenAI(
-        model=settings.default_model,
+    # Pydantic 필드로 선언 - 기본값은 None으로 두고, __init__에서 처리하거나, 
+    # Field의 default_factory를 사용하려면 반환 타입이 호환되어야 함.
+    # 여기서는 좀 더 안전하게 default_factory에서 get_llm 호출
+    llm: object = Field(default_factory=lambda: get_llm(
+        model_name=settings.default_model,
         temperature=0.1,
         max_tokens=512
     ))

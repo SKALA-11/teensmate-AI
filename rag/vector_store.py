@@ -8,8 +8,8 @@ ChromaDB를 기반으로 Vector Database를 관리합니다.
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
+from agents.llm import get_embeddings
 
 from config.settings import settings
 from config.logging import get_logger
@@ -41,8 +41,9 @@ class VectorStoreManager:
         self.read_only = read_only
         
         # 임베딩 초기화
-        self.embedding = OpenAIEmbeddings(
-            model=embedding_model or settings.aoai_deploy_embed_3_small
+        # 임베딩 초기화
+        self.embedding = get_embeddings(
+            model_name=embedding_model # settings에서 기본값 처리함
         )
         
         # Vector Store 초기화

@@ -36,23 +36,14 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
     
-    # 사용자 입력
-    if prompt := st.chat_input("질문을 입력하세요..."):
-        # 사용자 메시지 추가
-        st.session_state.messages.append({
-            "role": "user",
-            "content": prompt
-        })
-        
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        # AI 응답 생성
+    # 마지막 메시지가 사용자일 경우 답변 생성 (버튼 클릭 등으로 인한 rerun 대응)
+    if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
         with st.chat_message("assistant"):
             with st.spinner("생각 중..."):
                 try:
+                    last_query = st.session_state.messages[-1]["content"]
                     response = st.session_state.orchestrator.run(
-                        query=prompt,
+                        query=last_query,
                         session_id="streamlit_user"
                     )
                     
@@ -64,6 +55,9 @@ def main():
                         "content": response
                     })
                     
+                    # 메시지 추가 후 Rerun하여 상태 반영 (필수는 아니지만 꼬임 방지)
+                    st.rerun()
+                    
                 except Exception as e:
                     error_msg = f"❌ 오류가 발생했습니다: {str(e)}"
                     st.error(error_msg)
@@ -71,6 +65,15 @@ def main():
                         "role": "assistant",
                         "content": error_msg
                     })
+
+    # 사용자 입력
+    if prompt := st.chat_input("질문을 입력하세요..."):
+        # 사용자 메시지 추가
+        st.session_state.messages.append({
+            "role": "user",
+            "content": prompt
+        })
+        st.rerun()
     
     # 샘플 질문
     st.markdown("---")
@@ -92,3 +95,6 @@ def main():
                     "content": question
                 })
                 st.rerun()
+
+if __name__ == "__main__":
+    main()

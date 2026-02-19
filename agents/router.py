@@ -5,7 +5,7 @@ Router Agent
 """
 
 from typing import List, Literal
-from langchain_openai import ChatOpenAI
+from agents.llm import get_llm
 from langchain_core.prompts import ChatPromptTemplate
 
 from config.settings import settings
@@ -21,8 +21,8 @@ class RouterAgent:
     """쿼리 분류 라우터"""
     
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.default_model,
+        self.llm = get_llm(
+            model_name=settings.default_model,
             temperature=0.1,
             max_tokens=256
         )

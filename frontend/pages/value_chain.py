@@ -138,3 +138,6 @@ def main():
             if st.button(sample, key=f"vc_sample_{i}", width='stretch'):
                 st.session_state.vc_sample = sample
                 st.rerun()
+
+if __name__ == "__main__":
+    main()

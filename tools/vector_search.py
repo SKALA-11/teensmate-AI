@@ -133,12 +133,12 @@ class EducationSearchTool(BaseTool):
     """
     args_schema: Type[BaseModel] = VectorSearchInput
     
-    def _run(self, query: str, k: int = 3) -> str:
+    def _run(self, query: str, collection: str = "edu", k: int = 3, **kwargs) -> str:
         tool = VectorSearchTool()
         return tool._run(query, collection="edu", k=k)
     
-    async def _arun(self, query: str, k: int = 3) -> str:
-        return self._run(query, k)
+    async def _arun(self, query: str, collection: str = "edu", k: int = 3, **kwargs) -> str:
+        return self._run(query, k=k)
 
 
 class NewsSearchTool(BaseTool):
@@ -151,12 +151,12 @@ class NewsSearchTool(BaseTool):
     """
     args_schema: Type[BaseModel] = VectorSearchInput
     
-    def _run(self, query: str, k: int = 3) -> str:
+    def _run(self, query: str, collection: str = "news", k: int = 3, **kwargs) -> str:
         tool = VectorSearchTool()
         return tool._run(query, collection="news", k=k)
     
-    async def _arun(self, query: str, k: int = 3) -> str:
-        return self._run(query, k)
+    async def _arun(self, query: str, collection: str = "news", k: int = 3, **kwargs) -> str:
+        return self._run(query, k=k)
 
 
 class ReportSearchTool(BaseTool):
@@ -169,12 +169,12 @@ class ReportSearchTool(BaseTool):
     """
     args_schema: Type[BaseModel] = VectorSearchInput
     
-    def _run(self, query: str, k: int = 3) -> str:
+    def _run(self, query: str, collection: str = "report", k: int = 3, **kwargs) -> str:
         tool = VectorSearchTool()
         return tool._run(query, collection="report", k=k)
     
-    async def _arun(self, query: str, k: int = 3) -> str:
-        return self._run(query, k)
+    async def _arun(self, query: str, collection: str = "report", k: int = 3, **kwargs) -> str:
+        return self._run(query, k=k)
 
 
 class ValueChainSearchTool(BaseTool):
@@ -187,9 +187,9 @@ class ValueChainSearchTool(BaseTool):
     """
     args_schema: Type[BaseModel] = VectorSearchInput
     
-    def _run(self, query: str, k: int = 3) -> str:
+    def _run(self, query: str, collection: str = "valchain", k: int = 3, **kwargs) -> str:
         tool = VectorSearchTool()
         return tool._run(query, collection="valchain", k=k)
     
-    async def _arun(self, query: str, k: int = 3) -> str:
-        return self._run(query, k)
+    async def _arun(self, query: str, collection: str = "valchain", k: int = 3, **kwargs) -> str:
+        return self._run(query, k=k)

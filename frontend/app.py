@@ -25,7 +25,8 @@ with st.sidebar:
     page = st.radio(
         "페이지 선택",
         ["💬 채팅", "📈 주식 시뮬레이션", "🏭 밸류체인 분석"],
-        index=0
+        index=0,
+        label_visibility="collapsed"
     )
     
     st.markdown("---")
