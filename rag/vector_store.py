@@ -9,7 +9,6 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from agents.llm import get_embeddings
 
 from config.settings import settings
 from config.logging import get_logger
@@ -41,7 +40,7 @@ class VectorStoreManager:
         self.read_only = read_only
         
         # 임베딩 초기화
-        # 임베딩 초기화
+        from agents.llm import get_embeddings
         self.embedding = get_embeddings(
             model_name=embedding_model # settings에서 기본값 처리함
         )
@@ -75,21 +74,21 @@ class VectorStoreManager:
         )
     
     def _load_or_create_db(self):
-        """기존 DB 로드 또는 새로 생성"""
+        """기존 DB (읽기 전용 안전 로드)"""
         persist_path = Path(self.persist_directory)
         
         if persist_path.exists():
-            # 기존 DB 로드
+            # 기존 DB 로드 (원본 데이터 보호를 위해 기본 컬렉션명인 'langchain' 강제 사용)
             self.db = Chroma(
                 persist_directory=self.persist_directory,
                 embedding_function=self.embedding,
-                collection_name=self.collection_name
+                collection_name="langchain"
             )
-            logger.info(f"기존 Vector DB 로드: {self.persist_directory}")
+            logger.info(f"기존 Vector DB 안전하게 로드 완료: {self.persist_directory}")
         else:
-            # 새 DB 생성 (빈 상태)
-            logger.info(f"새로운 Vector DB 생성 대기: {self.persist_directory}")
-            self.db = None
+            # 원본 DB 유실/부재 시 치명적 오류 발생시켜 새로 생성 방지
+            logger.error(f"원본 벡터DB 경로를 찾을 수 없습니다: {self.persist_directory}")
+            raise FileNotFoundError(f"원본 벡터DB 파일이 없습니다: {self.persist_directory}")
     
     def add_documents(
         self,

@@ -6,15 +6,15 @@ Value Chain Analysis Page
 
 import streamlit as st
 from PIL import Image
-from agents.orchestrator import AgentOrchestrator
+from agents.value_chain import ValueChainAgent
 
 
 def main():
     """밸류체인 분석 페이지"""
     
-    # 오케스트레이터 초기화
-    if "vc_orchestrator" not in st.session_state:
-        st.session_state.vc_orchestrator = AgentOrchestrator(enable_memory=False)
+    # 밸류체인 에이전트 전용 초기화 (오케스트레이터 우회)
+    if "vc_agent" not in st.session_state:
+        st.session_state.vc_agent = ValueChainAgent()
     
     st.title("🏭 밸류체인 분석")
     st.markdown("제품이나 기업의 가치사슬을 분석하고 한국 기업의 참여를 확인하세요!")
@@ -32,8 +32,10 @@ def main():
         # 텍스트 입력
         st.markdown("#### 제품/산업/기업을 입력하세요")
         
+        default_query = st.session_state.get("vc_sample", "")
         query = st.text_input(
             "예: iPhone, 전기차, 반도체 산업 등",
+            value=default_query,
             placeholder="분석하고 싶은 제품이나 산업을 입력하세요..."
         )
         
@@ -43,9 +45,8 @@ def main():
             else:
                 with st.spinner("밸류체인을 분석하고 있습니다..."):
                     try:
-                        result = st.session_state.vc_orchestrator.run(
-                            query=f"{query}의 밸류체인 분석해줘",
-                            session_id="value_chain"
+                        result = st.session_state.vc_agent.run(
+                            query=query
                         )
                         
                         st.markdown("### 📊 분석 결과")
@@ -88,12 +89,11 @@ def main():
                             image_path = tmp_file.name
                         
                         # 밸류체인 분석
-                        query_text = additional_query if additional_query else "이 제품의 밸류체인을 분석해줘"
+                        query_text = additional_query if additional_query else ""
                         
-                        result = st.session_state.vc_orchestrator.run(
+                        result = st.session_state.vc_agent.run(
                             query=query_text,
-                            image_path=image_path,
-                            session_id="value_chain"
+                            image_path=image_path
                         )
                         
                         # 임시 파일 삭제

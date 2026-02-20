@@ -169,11 +169,8 @@ YOUR TASK IS TO ANALYZE AN IMAGE CONTAINING TEXT, LOGOS, PRODUCTS, OR CORPORATE 
 
 ### 🔍 컨텍스트 활용
 
-아래는 참고할 수 있도록 DB에서 검색된 밸류체인 관련 자료입니다:
-
-{context}
-
-이 자료를 활용하여:
+밸류체인 검색 도구(ValueChainSearchTool)를 사용하여 데이터베이스에서 참고할 관련 자료를 적극적으로 검색하십시오.
+검색된 결과를 바탕으로:
 1. 관련 기업 및 역할 정보 추출
 2. 검증된 파트너십/공급 관계 확인
 3. 최신 동향 및 투자 모멘텀 파악
