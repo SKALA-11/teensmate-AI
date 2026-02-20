@@ -1,0 +1,40 @@
+[project]
+name = "newmate-ai"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "chromadb>=1.5.0",
+    "fastapi>=0.129.0",
+    "gradio>=6.5.1",
+    "httpx>=0.28.1",
+    "langchain>=1.2.10",
+    "langchain-chroma>=1.1.0",
+    "langchain-community>=0.4.1",
+    "langchain-openai>=1.1.9",
+    "langchain-text-splitters>=1.1.0",
+    "langgraph>=0.2.55",
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.2",
+    "onnxruntime<1.24.1",
+    "openai>=2.20.0",
+    "pandas>=2.0.0,<3.0.0",
+    "pillow>=10.0.0,<12.0.0",
+    "plotly>=5.24.0",
+    "pycryptodome>=3.21.0",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.7.1",
+    "pydub>=0.25.1",
+    "python-dotenv>=1.2.1",
+    "python-multipart>=0.0.22",
+    "requests>=2.32.3",
+    "rich>=14.3.2",
+    "streamlit>=1.43.2",
+    "tiktoken>=0.12.0",
+    "tqdm>=4.67.3",
+    "uvicorn>=0.40.0",
+    "websockets>=14.1",
+    "beautifulsoup4>=4.12.3",
+    "langchain-classic>=1.0.1",
+]
