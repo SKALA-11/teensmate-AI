@@ -56,16 +56,38 @@ def main():
                         st.markdown("### 📊 분석 결과")
                         
                         # 비동기 제너레이터를 동기 제너레이터로 변환하는 어댑터
-                        import asyncio
                         def sync_stream(async_gen):
-                            loop = asyncio.new_event_loop()
-                            try:
-                                while True:
-                                    yield loop.run_until_complete(async_gen.__anext__())
-                            except StopAsyncIteration:
-                                pass
-                            finally:
+                            import asyncio
+                            import threading
+                            import queue
+                            
+                            q = queue.Queue()
+                            
+                            def run_async():
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                async def consume():
+                                    try:
+                                        async for item in async_gen:
+                                            q.put(item)
+                                    except Exception as e:
+                                        q.put(e)
+                                    finally:
+                                        q.put(StopIteration)
+                                loop.run_until_complete(consume())
                                 loop.close()
+                                
+                            t = threading.Thread(target=run_async)
+                            t.start()
+                            
+                            while True:
+                                item = q.get()
+                                if item is StopIteration:
+                                    break
+                                if isinstance(item, Exception):
+                                    raise item
+                                yield item
+                            t.join()
                                 
                         stream_gen = st.session_state.vc_agent.stream(
                             query=query
@@ -116,16 +138,38 @@ def main():
                         st.markdown("### 📊 분석 결과")
                         
                         # 비동기 제너레이터를 동기 제너레이터로 변환하는 어댑터
-                        import asyncio
                         def sync_stream(async_gen):
-                            loop = asyncio.new_event_loop()
-                            try:
-                                while True:
-                                    yield loop.run_until_complete(async_gen.__anext__())
-                            except StopAsyncIteration:
-                                pass
-                            finally:
+                            import asyncio
+                            import threading
+                            import queue
+                            
+                            q = queue.Queue()
+                            
+                            def run_async():
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                async def consume():
+                                    try:
+                                        async for item in async_gen:
+                                            q.put(item)
+                                    except Exception as e:
+                                        q.put(e)
+                                    finally:
+                                        q.put(StopIteration)
+                                loop.run_until_complete(consume())
                                 loop.close()
+                                
+                            t = threading.Thread(target=run_async)
+                            t.start()
+                            
+                            while True:
+                                item = q.get()
+                                if item is StopIteration:
+                                    break
+                                if isinstance(item, Exception):
+                                    raise item
+                                yield item
+                            t.join()
                                 
                         stream_gen = st.session_state.vc_agent.stream(
                             query=query_text,

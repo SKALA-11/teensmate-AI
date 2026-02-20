@@ -69,13 +69,10 @@ class ValueChainAgent:
         logger.info(f"Value Chain Agent 실행: {query}")
         
         try:
-            # 이미지가 있으면 먼저 분석
+            # 이미지가 첨부된 경우 에이전트가 image_analyzer를 통해 분석하도록 유도
             if image_path:
-                logger.info(f"이미지 분석: {image_path}")
-                # 이미지 분석 도구 직접 호출
-                image_tool = ImageAnalyzerTool()
-                keywords = image_tool._run(image_path=image_path)
-                query = f"{query} (이미지 분석 결과: {keywords})"
+                logger.info(f"이미지 분석 요청 (Agent Tool 위임): {image_path}")
+                query = f"{query} (분석 대상 이미지 경로: {image_path}. 먼저 image_analyzer 도구를 사용해 이 이미지를 분석하여 주제(제품명, 회사명 등)를 도출한 후 밸류체인 분석을 진행하세요.)"
             
             # 이미지 존재 시 기존 파일 삭제 방침에 따라 이 단계에서는 임시 파일만 넘김
             result = self.agent.invoke({"messages": [("user", query)]}, config=config)
@@ -106,11 +103,8 @@ class ValueChainAgent:
         
         try:
             if image_path:
-                logger.info(f"이미지 분석: {image_path}")
-                # 이미지 분석 도구 직접 호출
-                image_tool = ImageAnalyzerTool()
-                keywords = image_tool._run(image_path=image_path)
-                query = f"{query} (이미지 분석 결과: {keywords})"
+                logger.info(f"이미지 분석 요청 (Agent Tool 위임): {image_path}")
+                query = f"{query} (분석 대상 이미지 경로: {image_path}. 먼저 image_analyzer 도구를 사용해 이 이미지를 분석하여 주제(제품명, 회사명 등)를 도출한 후 밸류체인 분석을 진행하세요.)"
                 
             # 스트리밍 결과 변수
             full_response = ""

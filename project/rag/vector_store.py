@@ -257,6 +257,26 @@ class VectorStoreManager:
             return 0
         return self.db._collection.count()
 
+    def get_all_documents(self) -> List[Document]:
+        """컬렉션 내 전체 문서 로드 (BM25 초기화 등 용도)"""
+        if self.db is None:
+            logger.warning("DB가 초기화되지 않았습니다.")
+            return []
+            
+        try:
+            # Chroma 컬렉션의 get() 메서드로 쿼리 없이 전체 문서 반환
+            result = self.db._collection.get()
+            docs = []
+            for i in range(len(result["ids"])):
+                metadata = result["metadatas"][i] if result["metadatas"] else {}
+                content = result["documents"][i] if result["documents"] else ""
+                docs.append(Document(page_content=content, metadata=metadata))
+            logger.info(f"Vector Store('{self.collection_name}'): 전체 문서 {len(docs)}개 로드 완료")
+            return docs
+        except Exception as e:
+            logger.error(f"전체 문서 로드 오류: {e}", exc_info=True)
+            return []
+
 
 # 사전 정의된 Vector Store 인스턴스 생성 함수 (모두 읽기 전용)
 def get_edu_store() -> VectorStoreManager:

@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     log_file: str = "./logs/app.log"
     
     # Backend 설정
-    cors_allow_origins: str = Field(default="*", env="CORS_ALLOW_ORIGINS")
+    cors_allow_origins: str = Field(default="http://localhost:8501,http://127.0.0.1:8501", env="CORS_ALLOW_ORIGINS")
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
     backend_reload: bool = True

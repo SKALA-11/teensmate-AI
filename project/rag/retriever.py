@@ -87,11 +87,8 @@ class HybridRetriever:
         
         # BM25 초기화 (최초 1회)
         if self.bm25_retriever is None and vector_results:
-            # Vector Store에서 모든 문서 가져오기
-            all_docs = self.vector_store.similarity_search(
-                query="",  # 빈 쿼리로 샘플링
-                k=1000  # 충분히 큰 수
-            )
+            # Vector Store에서 모든 문서 가져오기 (전체 로드 기반)
+            all_docs = self.vector_store.get_all_documents()
             self._init_bm25_retriever(all_docs)
         
         # BM25 검색 (키워드)

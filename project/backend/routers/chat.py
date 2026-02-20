@@ -142,6 +142,17 @@ async def chat_with_image(
     logger.info(f"이미지 채팅 요청: {query} (session: {session_id})")
     
     try:
+        # 파일 타입 검증
+        if image.content_type not in ["image/jpeg", "image/png"]:
+            raise HTTPException(status_code=400, detail="지원하지 않는 파일 형식입니다. (JPEG/PNG만 허용)")
+            
+        # 파일 크기 검증 (20MB 제한)
+        MAX_FILE_SIZE = 20 * 1024 * 1024
+        file_content = await image.read()
+        if len(file_content) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="파일 크기가 너무 큽니다. 최대 20MB까지 업로드 가능합니다.")
+        await image.seek(0)
+        
         # 이미지 저장 (임시)
         import tempfile
         import shutil

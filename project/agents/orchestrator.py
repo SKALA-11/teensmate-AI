@@ -48,9 +48,12 @@ class AgentOrchestrator:
         self.report_agent = ReportAgent()
         self.value_chain_agent = ValueChainAgent()
         
-        # Memory - 간단한 딕셔너리 기반
+        # Memory - LRU 기반 세션 관리 (최대 100개 세션)
+        from collections import OrderedDict
         self.enable_memory = enable_memory
-        self.memory_store: Dict[str, List[BaseMessage]] = {}
+        self.memory_store: OrderedDict[str, List[BaseMessage]] = OrderedDict()
+        self.max_sessions = 100
+        self.max_messages_per_session = 50
         
         # Workflow 구축
         self.workflow = self._build_workflow()
@@ -144,8 +147,11 @@ class AgentOrchestrator:
         """교육 에이전트 노드"""
         logger.info("Education Agent 노드 실행")
         
+        cfg = config.copy() if config else {}
+        cfg["tags"] = cfg.get("tags", []) + ["agent:education"]
+        
         query = state["query"]
-        result = self.edu_agent.run(query, config=config)
+        result = self.edu_agent.run(query, config=cfg)
         
         return {"edu_result": [result]}
     
@@ -153,8 +159,11 @@ class AgentOrchestrator:
         """뉴스 에이전트 노드"""
         logger.info("News Agent 노드 실행")
         
+        cfg = config.copy() if config else {}
+        cfg["tags"] = cfg.get("tags", []) + ["agent:news"]
+        
         query = state["query"]
-        result = self.news_agent.run(query, config=config)
+        result = self.news_agent.run(query, config=cfg)
         
         return {"news_result": [result]}
     
@@ -162,8 +171,11 @@ class AgentOrchestrator:
         """리포트 에이전트 노드"""
         logger.info("Report Agent 노드 실행")
         
+        cfg = config.copy() if config else {}
+        cfg["tags"] = cfg.get("tags", []) + ["agent:report"]
+        
         query = state["query"]
-        result = self.report_agent.run(query, config=config)
+        result = self.report_agent.run(query, config=cfg)
         
         return {"report_result": [result]}
     
@@ -171,9 +183,12 @@ class AgentOrchestrator:
         """밸류체인 에이전트 노드"""
         logger.info("Value Chain Agent 노드 실행")
         
+        cfg = config.copy() if config else {}
+        cfg["tags"] = cfg.get("tags", []) + ["agent:value_chain"]
+        
         query = state["query"]
         image_path = state.get("image_path")
-        result = self.value_chain_agent.run(query, image_path, config=config)
+        result = self.value_chain_agent.run(query, image_path, config=cfg)
         
         return {"value_chain_result": [result]}
     
@@ -252,12 +267,22 @@ class AgentOrchestrator:
             # 최종 답변
             answer = final_state["final_answer"]
             
-            # 메모리 저장
+            # 메모리 저장 및 LRU 정책 적용
             if self.enable_memory:
                 if session_id not in self.memory_store:
                     self.memory_store[session_id] = []
+                self.memory_store.move_to_end(session_id)
                 self.memory_store[session_id].append(HumanMessage(content=query))
                 self.memory_store[session_id].append(AIMessage(content=answer))
+                
+                # 세션 내 최대 메시지 제한
+                if len(self.memory_store[session_id]) > self.max_messages_per_session:
+                    excess = len(self.memory_store[session_id]) - self.max_messages_per_session
+                    self.memory_store[session_id] = self.memory_store[session_id][excess:]
+                    
+                # 최대 활성 세션 수 체크 및 오래된 세션 삭제
+                while len(self.memory_store) > self.max_sessions:
+                    self.memory_store.popitem(last=False)
             
             logger.info("Orchestrator 실행 완료")
             return answer
@@ -305,57 +330,122 @@ class AgentOrchestrator:
             # 스트리밍 결과 변수
             full_response = ""
             
-            # 병렬 실행 시 순서 보장을 위한 버퍼링 방식 대신, 단순 헤더 주입 방식 사용
-            # (라우터는 무시하고 실제 에이전트들의 응답만 스트리밍)
+            # 병렬 실행 시 순서 섞임 방지를 위한 버퍼링
+            # 전체 응답 대기 지연을 줄이기 위해, 활성 노드(active_node)의 청크는 즉각(yield) 보냅니다.
+            node_buffers = {}
+            active_node = None
+            pending_nodes = []
             ended_agents = 0
             
             async for event in self.workflow.astream_events(initial_state, version="v1"):
                 kind = event["event"]
+                tags = event.get("tags", [])
                 name = event.get("name", "")
                 
-                # 라우터 응답은 스트리밍하지 않음
-                if event.get("metadata", {}).get("langgraph_node") == "router":
-                    continue
+                agent_node = None
+                if "agent:education" in tags: agent_node = "education"
+                elif "agent:news" in tags: agent_node = "news"
+                elif "agent:report" in tags: agent_node = "report"
+                elif "agent:value_chain" in tags: agent_node = "value_chain"
                 
-                # 각 에이전트 노드 시작 시 헤더 출력
-                if kind == "on_chain_start":
-                    header = ""
-                    if name == "education":
-                        header = "### 📚 교육 정보\n\n"
-                    elif name == "news":
-                        header = "### 📰 뉴스 분석\n\n"
-                    elif name == "report":
-                        header = "### 📊 리포트 분석\n\n"
-                    elif name == "value_chain":
-                        header = "### 🏭 밸류체인 분석\n\n"
+                if not agent_node and kind == "on_chain_start" and name in ["education", "news", "report", "value_chain"]:
+                    agent_node = name
+                if not agent_node and kind == "on_chain_end" and name in ["education", "news", "report", "value_chain"]:
+                    agent_node = name
+                    
+                if not agent_node:
+                    continue
+                    
+                # 노드 자체의 시작
+                if kind == "on_chain_start" and name == agent_node:
+                    if agent_node not in node_buffers:
+                        node_buffers[agent_node] = ""
+                        if agent_node not in pending_nodes and agent_node != active_node:
+                            pending_nodes.append(agent_node)
                         
-                    if header:
-                        if ended_agents > 0:
-                            header = "\n\n---\n\n" + header
-                        full_response += header
-                        yield header
-                        ended_agents += 1
+                        header = ""
+                        if agent_node == "education": header = "### 📚 교육 정보\n\n"
+                        elif agent_node == "news": header = "### 📰 뉴스 분석\n\n"
+                        elif agent_node == "report": header = "### 📊 리포트 분석\n\n"
+                        elif agent_node == "value_chain": header = "### 🏭 밸류체인 분석\n\n"
+                        
+                        # 활성 노드가 없으면 바로 선점
+                        if active_node is None:
+                            active_node = pending_nodes.pop(0)
+                            if active_node == agent_node:
+                                if header:
+                                    prefix = "\n\n---\n\n" if ended_agents > 0 else ""
+                                    combined_header = prefix + header
+                                    full_response += combined_header
+                                    yield combined_header
+                            else:
+                                node_buffers[agent_node] += header
+                        else:
+                            node_buffers[agent_node] += header
                 
                 # LLM 스트리밍 청크 반환 캡처
-                if kind == "on_chat_model_stream":
+                elif kind == "on_chat_model_stream":
                     chunk = event["data"]["chunk"]
                     if getattr(chunk, "content", None):
                         content = chunk.content
-                        full_response += content
-                        yield content
+                        if agent_node == active_node:
+                            full_response += content
+                            yield content
+                        else:
+                            if agent_node not in node_buffers:
+                                node_buffers[agent_node] = ""
+                                if agent_node not in pending_nodes:
+                                    pending_nodes.append(agent_node)
+                            node_buffers[agent_node] += content
+                            
+                # 노드 자체의 종료
+                elif kind == "on_chain_end" and name == agent_node:
+                    if agent_node == active_node:
+                        ended_agents += 1
+                        active_node = None
+                        
+                        # 대기 중인 노드가 있다면 버퍼를 쏟아내고 다음 active_node로 전환
+                        while pending_nodes:
+                            active_node = pending_nodes.pop(0)
+                            buf = node_buffers.pop(active_node, "")
+                            if buf:
+                                prefix = "\n\n---\n\n" if ended_agents > 0 else ""
+                                full_response += (prefix + buf)
+                                yield (prefix + buf)
+                            # 여기서 active_node를 유지하면, 해당 노드의 남은 스트리밍 청크가 즉시 yield 됩니다
+                            break
             
-            # 아무 에이전트도 실행되지 않은 경우 (nothing)
-            if ended_agents == 0 and "nothing" in initial_state.get("classifications", ["nothing"]):
+            # 남은 버퍼 비우기 (만약 존재할 경우)
+            for n in pending_nodes:
+                buf = node_buffers.get(n, "")
+                if buf:
+                    prefix = "\n\n---\n\n" if ended_agents > 0 else ""
+                    full_response += (prefix + buf)
+                    yield (prefix + buf)
+                    ended_agents += 1
+            
+            # 아무 에이전트도 실행되지 않은 경우 fallback
+            if ended_agents == 0:
                 fallback = "경제와 관련된 질문을 입력해주세요! 😊"
                 full_response = fallback
                 yield fallback
 
-            # 메모리 저장
+            # 메모리 저장 및 LRU 정책 적용
             if self.enable_memory:
                 if session_id not in self.memory_store:
                     self.memory_store[session_id] = []
+                self.memory_store.move_to_end(session_id)
                 self.memory_store[session_id].append(HumanMessage(content=query))
                 self.memory_store[session_id].append(AIMessage(content=full_response))
+                
+                # 세션 내 최대 메시지 제한
+                if len(self.memory_store[session_id]) > self.max_messages_per_session:
+                    excess = len(self.memory_store[session_id]) - self.max_messages_per_session
+                    self.memory_store[session_id] = self.memory_store[session_id][excess:]
+                    
+                # 최대 세션 수 제한
+                while len(self.memory_store) > self.max_sessions:
+                    self.memory_store.popitem(last=False)
             
             logger.info("Orchestrator 스트리밍 완료")
             
