@@ -82,60 +82,187 @@ def _stop_websocket():
         st.session_state.ws_client = None
 
 
-def _create_chart(stocks: list[Stock]) -> go.Figure:
-    """실시간 주가 차트 생성 (Plotly)"""
+def _build_candle_data_ts(price_with_times: list) -> dict:
+    """
+    (timestamp, price) 쌍 리스트를 5틱 단위 OHLC 캔들로 변환.
+    x 값은 각 캔들 윈도우의 마지막 타임스탬프.
+    """
+    CANDLE_SIZE = 5
+    xs, opens, highs, lows, closes, volumes = [], [], [], [], [], []
+
+    if len(price_with_times) < 1:
+        return {}
+
+    step = max(CANDLE_SIZE // 2, 1)
+    for i in range(0, max(len(price_with_times) - CANDLE_SIZE + 1, 1), step):
+        chunk = price_with_times[i: i + CANDLE_SIZE]
+        if not chunk:
+            continue
+        times  = [t for t, _ in chunk]
+        prices = [p for _, p in chunk]
+        xs.append(times[-1])          # 캔들 x = 마지막 체결 시각
+        opens.append(prices[0])
+        highs.append(max(prices))
+        lows.append(min(prices))
+        closes.append(prices[-1])
+        volumes.append(max(prices) - min(prices) + 1)
+
+    return {"x": xs, "open": opens, "high": highs, "low": lows, "close": closes, "volume": volumes}
+
+
+def _create_chart(stocks: list) -> go.Figure:
+    """실시간 주가 차트 — 캔들스틱 + 이동평균 + 거래량, x축=실제 시각 (Plotly)"""
+    from datetime import datetime, timedelta
     n = len(stocks)
+
+    row_heights, subplot_titles = [], []
+    for stock in stocks:
+        row_heights += [0.75, 0.25]
+        subplot_titles += [f"{stock.name} ({stock.code})", ""]
+
+    total_rows = n * 2
     fig = make_subplots(
-        rows=n,
+        rows=total_rows,
         cols=1,
-        subplot_titles=[f"{s.name} ({s.code})" for s in stocks],
-        vertical_spacing=0.10,
+        shared_xaxes=True,
+        row_heights=row_heights,
+        vertical_spacing=0.03,
+        subplot_titles=subplot_titles,
     )
 
-    colors = ["#2196F3", "#4CAF50", "#FF9800", "#E91E63"]
+    UP_COLOR   = "#EF5350"
+    DOWN_COLOR = "#2196F3"
 
-    for idx, stock in enumerate(stocks, 1):
-        history = stock.price_history
-        color = colors[(idx - 1) % len(colors)]
+    # 전체 x축 범위를 모든 종목의 최솟값~최댓값으로 통일
+    all_times = []
+    all_candles = []
+    for stock in stocks:
+        pwt = stock.price_with_times
+        c = _build_candle_data_ts(pwt)
+        all_candles.append(c)
+        if c and c.get("x"):
+            all_times.extend(c["x"])
 
-        if len(history) > 1:
+    if all_times:
+        x_min = min(all_times)
+        x_max = max(all_times) + timedelta(seconds=10)
+    else:
+        x_min = x_max = None
+
+    for stock_idx, stock in enumerate(stocks):
+        candle_row = stock_idx * 2 + 1
+        volume_row = stock_idx * 2 + 2
+        candle = all_candles[stock_idx]
+
+        if candle and candle.get("x"):
+            xs         = candle["x"]
+            closes_arr = candle["close"]
+            colors_bar = [
+                UP_COLOR if c >= o else DOWN_COLOR
+                for c, o in zip(candle["close"], candle["open"])
+            ]
+
+            # ── 캔들스틱 ──
             fig.add_trace(
-                go.Scatter(
-                    y=history,
-                    mode="lines",
+                go.Candlestick(
+                    x=xs,
+                    open=candle["open"],
+                    high=candle["high"],
+                    low=candle["low"],
+                    close=candle["close"],
                     name=stock.name,
-                    line=dict(color=color, width=2),
-                    fill="tozeroy",
-                    fillcolor=color.replace(")", ", 0.1)").replace("rgb", "rgba"),
+                    increasing=dict(line=dict(color=UP_COLOR, width=1), fillcolor=UP_COLOR),
+                    decreasing=dict(line=dict(color=DOWN_COLOR, width=1), fillcolor=DOWN_COLOR),
+                    showlegend=False,
                 ),
-                row=idx,
-                col=1,
-            )
-        else:
-            # 데이터 없음 안내
-            fig.add_annotation(
-                text="데이터 수신 대기 중...",
-                xref="paper",
-                yref=f"y{idx}" if idx > 1 else "y",
-                x=0.5,
-                y=0,
-                showarrow=False,
-                font=dict(size=12, color="gray"),
-                row=idx,
-                col=1,
+                row=candle_row, col=1,
             )
 
-        fig.update_yaxes(title_text="가격 (원)", row=idx, col=1)
+            # ── MA5 ──
+            if len(closes_arr) >= 5:
+                ma5 = pd.Series(closes_arr).rolling(5).mean().tolist()
+                fig.add_trace(
+                    go.Scatter(
+                        x=xs, y=ma5, mode="lines", name="MA5",
+                        line=dict(color="#FF9800", width=1.5, dash="dot"),
+                        showlegend=False,
+                    ),
+                    row=candle_row, col=1,
+                )
+
+            # ── MA20 ──
+            if len(closes_arr) >= 20:
+                ma20 = pd.Series(closes_arr).rolling(20).mean().tolist()
+                fig.add_trace(
+                    go.Scatter(
+                        x=xs, y=ma20, mode="lines", name="MA20",
+                        line=dict(color="#AB47BC", width=1.5, dash="dash"),
+                        showlegend=False,
+                    ),
+                    row=candle_row, col=1,
+                )
+
+            # ── 현재가 수평선 ──
+            if stock.price > 0:
+                fig.add_hline(
+                    y=stock.price,
+                    line_dash="dot",
+                    line_color="rgba(255,255,255,0.4)",
+                    line_width=1,
+                    row=candle_row, col=1,
+                )
+
+            # ── 거래량 바 ──
+            fig.add_trace(
+                go.Bar(
+                    x=xs, y=candle["volume"],
+                    marker_color=colors_bar,
+                    marker_line_width=0,
+                    name="거래량",
+                    showlegend=False,
+                    opacity=0.7,
+                ),
+                row=volume_row, col=1,
+            )
+
+            fig.update_yaxes(title_text="가격 (원)", row=candle_row, col=1,
+                             showgrid=True, gridcolor="rgba(255,255,255,0.08)",
+                             tickformat=",", zeroline=False)
+            fig.update_yaxes(title_text="변동폭", row=volume_row, col=1,
+                             showgrid=False, zeroline=False)
+        else:
+            fig.add_annotation(
+                text=f"<b>{stock.name}</b><br>데이터 수신 대기 중...",
+                xref="paper", yref="paper",
+                x=0.5,
+                y=1 - (stock_idx / max(n, 1)) - 0.05,
+                showarrow=False,
+                font=dict(size=13, color="#aaa"),
+            )
+
+    # x축 범위 통일 + 레인지슬라이더 제거
+    xaxis_common = dict(
+        showgrid=True,
+        gridcolor="rgba(255,255,255,0.06)",
+        zeroline=False,
+        rangeslider=dict(visible=False),
+        **({"range": [x_min, x_max]} if x_min and x_max else {}),
+    )
 
     fig.update_layout(
-        height=max(280 * n, 300),
+        height=max(380 * n, 380),
         showlegend=False,
         title_text="📈 실시간 주가 차트",
         hovermode="x unified",
         margin=dict(l=10, r=10, t=50, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0.02)",
+        plot_bgcolor="rgba(15,15,30,0.85)",
+        xaxis_rangeslider_visible=False,
+        font=dict(color="#ccc"),
     )
+    for i in range(1, total_rows + 1):
+        fig.update_xaxes(**xaxis_common, row=i, col=1)
+
     return fig
 
 
@@ -172,10 +299,15 @@ def main():
     st.markdown("#### 📊 종목 선택")
 
     stock_options = [f"{s['name']} ({s['code']})" for s in POPULAR_STOCKS]
+    # SK하이닉스 기본 선택 (POPULAR_STOCKS[1])
+    sk_hynix_option = next(
+        (f"{s['name']} ({s['code']})" for s in POPULAR_STOCKS if s['name'] == 'SK하이닉스'),
+        stock_options[1]
+    )
     selected = st.multiselect(
         "조회할 종목을 선택하세요 (최대 4개)",
         options=stock_options,
-        default=[stock_options[0]],
+        default=[sk_hynix_option],
         max_selections=4,
         disabled=st.session_state.is_running,
     )

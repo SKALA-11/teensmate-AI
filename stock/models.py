@@ -4,7 +4,8 @@ Stock & User Models
 주식 데이터 모델과 사용자 잔고/포트폴리오 관리
 """
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
+from datetime import datetime
 
 DEFAULT_INITIAL_PRICE = 0
 DEFAULT_INITIAL_BALANCE = 10_000_000  # 1000만원
@@ -32,7 +33,8 @@ class Stock:
         self._name = name
         self._code = code
         self._price = initial_price
-        self._price_history: List[int] = [self._price]
+        self._price_history: List[int] = []
+        self._timestamps: List[datetime] = []
 
     @property
     def name(self) -> str:
@@ -60,6 +62,16 @@ class Stock:
         """가격 히스토리 (복사본)"""
         return self._price_history.copy()
 
+    @property
+    def timestamps(self) -> List[datetime]:
+        """타임스탬프 히스토리 (복사본)"""
+        return self._timestamps.copy()
+
+    @property
+    def price_with_times(self) -> List[Tuple[datetime, int]]:
+        """(타임스탬프, 가격) 쌍 리스트"""
+        return list(zip(self._timestamps, self._price_history))
+
     def update_price(self, new_price: int):
         """
         가격 업데이트
@@ -67,12 +79,9 @@ class Stock:
         Args:
             new_price: 새로운 가격
         """
-        # 초기 가격이 0이면 첫 실제 가격으로 대체
-        if self._price_history[0] == DEFAULT_INITIAL_PRICE:
-            self._price_history[0] = new_price
-
         self._price = new_price
-        self._price_history.append(self._price)
+        self._price_history.append(new_price)
+        self._timestamps.append(datetime.now())
 
     def __repr__(self) -> str:
         return f"Stock(name='{self._name}', code='{self._code}', price={self._price})"
