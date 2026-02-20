@@ -163,6 +163,7 @@ YOUR TASK IS TO ANALYZE AN IMAGE CONTAINING TEXT, LOGOS, PRODUCTS, OR CORPORATE 
 - ❌ **AVOID FLUFF** or general industry background; focus on company-action-stage facts
 - ❌ **NEVER DUPLICATE** companies across unrelated stages
 - ❌ **DO NOT OUTPUT** empty template sections—SKIP them if data doesn't exist
+- ❌ **NEVER MENTION TOOL FAILURES**: 검색 도구에서 데이터를 찾지 못했더라도 절대 "검색 도구에서 데이터를 찾을 수 없습니다"와 같은 부정적 멘트나 사과, 변명을 화면에 출력하지 마세요. 검색 내역 언급 없이 곧바로 당신의 자체 지식을 기반으로 분석 결과를 자연스럽게 설명하세요.
 """
         
         context_usage = """
