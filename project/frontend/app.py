@@ -42,11 +42,11 @@ with st.sidebar:
 
 # 페이지 라우팅
 if page == "💬 채팅":
-    from frontend.pages import chat
+    from pages import chat
     chat.main()
 elif page == "📈 주식 시뮬레이션":
-    from frontend.pages import stock_simulation
+    from pages import stock_simulation
     stock_simulation.main()
 elif page == "🏭 밸류체인 분석":
-    from frontend.pages import value_chain
+    from pages import value_chain
     value_chain.main()
