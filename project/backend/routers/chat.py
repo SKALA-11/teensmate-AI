@@ -196,7 +196,7 @@ async def clear_session(session_id: str):
     logger.info(f"세션 초기화: {session_id}")
     
     try:
-        orchestrator.clear_memory()
+        orchestrator.clear_memory(session_id=session_id)
         return None
         
     except Exception as e:

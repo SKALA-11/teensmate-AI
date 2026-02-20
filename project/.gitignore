@@ -1,0 +1,22 @@
+# project/ 내부 .gitignore
+
+# 환경변수
+.env
+
+# 가상환경
+.venv/
+
+# 캐시
+__pycache__/
+*.py[cod]
+*.pyc
+
+# 로그
+logs/
+
+# Chroma DB (대용량 바이너리, 별도 관리)
+data/chroma/
+
+# 임시 파일
+*.tmp
+*.bak

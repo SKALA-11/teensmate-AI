@@ -14,6 +14,7 @@ services:
       - BACKEND_PORT=8000
     volumes:
       - ./logs:/app/logs
+      - ./data:/app/data
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/api/v1/health"]

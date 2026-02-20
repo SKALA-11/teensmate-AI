@@ -38,12 +38,12 @@ class Settings(BaseSettings):
     # OpenAI 호환성 (기존 코드와 호환)
     openai_api_key: Optional[str] = None
     
-    # Vector Database 설정 (읽기 전용, 기존 경로 유지)
-    chroma_persist_dir: str = "../crawler"
-    chroma_edu_db: str = "../crawler/chroma_edu_db"
-    chroma_news_db: str = "../crawler/chroma_news_db"
-    chroma_report_db: str = "../crawler/chroma_report_db"
-    chroma_valchain_db: str = "../crawler/chroma_valchain_db"
+    # Vector Database 설정 (환경변수 또는 기본 경로 사용)
+    chroma_persist_dir: str = Field(default="./data/chroma", env="CHROMA_PERSIST_DIR")
+    chroma_edu_db: str = Field(default="./data/chroma/edu_db", env="CHROMA_EDU_DB")
+    chroma_news_db: str = Field(default="./data/chroma/news_db", env="CHROMA_NEWS_DB")
+    chroma_report_db: str = Field(default="./data/chroma/report_db", env="CHROMA_REPORT_DB")
+    chroma_valchain_db: str = Field(default="./data/chroma/valchain_db", env="CHROMA_VALCHAIN_DB")
     
     # LLM 설정
     default_model: str = "gpt-4o"
@@ -88,8 +88,5 @@ def get_settings() -> Settings:
     return settings
 
 
-# OpenAI 환경변수 설정 (기존 코드 호환성)
-os.environ["OPENAI_API_KEY"] = settings.openai_api_key or settings.aoai_api_key
-os.environ["AZURE_OPENAI_ENDPOINT"] = settings.aoai_endpoint
-os.environ["AZURE_OPENAI_API_KEY"] = settings.aoai_api_key
+
 

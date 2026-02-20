@@ -24,10 +24,10 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add]
     query: str
     classifications: List[QueryType]
-    edu_result: str
-    news_result: str
-    report_result: str
-    value_chain_result: str
+    edu_result: Annotated[List[str], add]
+    news_result: Annotated[List[str], add]
+    report_result: Annotated[List[str], add]
+    value_chain_result: Annotated[List[str], add]
     final_answer: str
     image_path: str | None
 
@@ -109,25 +109,29 @@ class AgentOrchestrator:
         
         return state
     
-    def _route_query(self, state: AgentState) -> str:
+    def _route_query(self, state: AgentState) -> List[str]:
         """쿼리 라우팅 결정"""
         classifications = state["classifications"]
         
-        # nothing인 경우 바로 통합으로 (기본 답변)
-        if "nothing" in classifications:
-            return "synthesize"
+        # nothing이거나 분류 결과가 없으면 기본 답변으로
+        if "nothing" in classifications or not classifications:
+            return ["synthesize"]
         
-        # 첫 번째 분류로 라우팅
+        # 분류된 모든 에이전트로 병렬 라우팅 (Fan-out)
+        routes = []
         if "edu" in classifications:
-            return "education"
-        elif "news" in classifications:
-            return "news"
-        elif "report" in classifications:
-            return "report"
-        elif "value_chain" in classifications:
-            return "value_chain"
-        else:
-            return "synthesize"
+            routes.append("education")
+        if "news" in classifications:
+            routes.append("news")
+        if "report" in classifications:
+            routes.append("report")
+        if "value_chain" in classifications:
+            routes.append("value_chain")
+            
+        if not routes:
+            return ["synthesize"]
+            
+        return routes
     
     def _education_node(self, state: AgentState) -> AgentState:
         """교육 에이전트 노드"""
@@ -136,30 +140,27 @@ class AgentOrchestrator:
         query = state["query"]
         result = self.edu_agent.run(query)
         
-        state["edu_result"] = result
-        return state
+        return {"edu_result": [result]}
     
-    def _news_node(self, state: AgentState) -> AgentState:
+    def _news_node(self, state: AgentState) -> dict:
         """뉴스 에이전트 노드"""
         logger.info("News Agent 노드 실행")
         
         query = state["query"]
         result = self.news_agent.run(query)
         
-        state["news_result"] = result
-        return state
+        return {"news_result": [result]}
     
-    def _report_node(self, state: AgentState) -> AgentState:
+    def _report_node(self, state: AgentState) -> dict:
         """리포트 에이전트 노드"""
         logger.info("Report Agent 노드 실행")
         
         query = state["query"]
         result = self.report_agent.run(query)
         
-        state["report_result"] = result
-        return state
+        return {"report_result": [result]}
     
-    def _value_chain_node(self, state: AgentState) -> AgentState:
+    def _value_chain_node(self, state: AgentState) -> dict:
         """밸류체인 에이전트 노드"""
         logger.info("Value Chain Agent 노드 실행")
         
@@ -167,10 +168,9 @@ class AgentOrchestrator:
         image_path = state.get("image_path")
         result = self.value_chain_agent.run(query, image_path)
         
-        state["value_chain_result"] = result
-        return state
+        return {"value_chain_result": [result]}
     
-    def _synthesize_node(self, state: AgentState) -> AgentState:
+    def _synthesize_node(self, state: AgentState) -> dict:
         """결과 통합 노드"""
         logger.info("통합 노드 실행")
         
@@ -178,31 +178,28 @@ class AgentOrchestrator:
         
         # nothing인 경우 기본 답변
         if "nothing" in classifications:
-            state["final_answer"] = "경제와 관련된 질문을 입력해주세요! 😊"
-            return state
+            return {"final_answer": "경제와 관련된 질문을 입력해주세요! 😊"}
         
         # 각 에이전트 결과 수집
         results = []
         
         if state.get("edu_result"):
-            results.append(f"### 📚 교육 정보\n\n{state['edu_result']}")
+            results.append(f"### 📚 교육 정보\n\n{state['edu_result'][-1]}")
         
         if state.get("news_result"):
-            results.append(f"### 📰 뉴스 분석\n\n{state['news_result']}")
+            results.append(f"### 📰 뉴스 분석\n\n{state['news_result'][-1]}")
         
         if state.get("report_result"):
-            results.append(f"### 📊 리포트 분석\n\n{state['report_result']}")
+            results.append(f"### 📊 리포트 분석\n\n{state['report_result'][-1]}")
         
         if state.get("value_chain_result"):
-            results.append(f"### 🏭 밸류체인 분석\n\n{state['value_chain_result']}")
+            results.append(f"### 🏭 밸류체인 분석\n\n{state['value_chain_result'][-1]}")
         
         # 결과가 없으면 기본 메시지
         if not results:
-            state["final_answer"] = "관련 정보를 찾을 수 없습니다."
+            return {"final_answer": "관련 정보를 찾을 수 없습니다."}
         else:
-            state["final_answer"] = "\n\n---\n\n".join(results)
-        
-        return state
+            return {"final_answer": "\n\n---\n\n".join(results)}
     
     def run(
         self,
@@ -230,14 +227,14 @@ class AgentOrchestrator:
                 chat_history = self.memory_store.get(session_id, [])
             
             # 초기 상태
-            initial_state: AgentState = {
+            initial_state = {
                 "messages": chat_history + [HumanMessage(content=query)],
                 "query": query,
                 "classifications": [],
-                "edu_result": "",
-                "news_result": "",
-                "report_result": "",
-                "value_chain_result": "",
+                "edu_result": [],
+                "news_result": [],
+                "report_result": [],
+                "value_chain_result": [],
                 "final_answer": "",
                 "image_path": image_path
             }

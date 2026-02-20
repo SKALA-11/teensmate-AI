@@ -14,6 +14,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from streamlit_autorefresh import st_autorefresh
 
 from stock.models import Stock, User
 from stock.kis_client import KISWebSocketClient
@@ -472,8 +473,8 @@ def main():
             st.dataframe(portfolio_df, width="stretch", hide_index=True)
 
     # ── 자동 갱신 (3초마다 rerun) ─────────────────────────
-    time.sleep(3)
-    st.rerun()
+    if st.session_state.is_running:
+        st_autorefresh(interval=3000, limit=None, key="stock_refresh")
 
 
 if __name__ == "__main__":

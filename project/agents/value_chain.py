@@ -84,11 +84,15 @@ class ValueChainAgent:
         try:
             # 이미지가 있으면 먼저 분석
             if image_path:
-                logger.info(f"이미지 분석: {image_path}")
-                # 이미지 분석 도구 직접 호출
-                image_tool = ImageAnalyzerTool()
-                keywords = image_tool._run(image_path=image_path)
-                query = f"{query} (이미지 분석 결과: {keywords})"
+                try:
+                    logger.info(f"이미지 분석: {image_path}")
+                    # 이미지 분석 도구 직접 호출
+                    image_tool = ImageAnalyzerTool()
+                    keywords = image_tool._run(image_path=image_path)
+                    query = f"{query} (이미지 분석 결과: {keywords})"
+                finally:
+                    from pathlib import Path
+                    Path(image_path).unlink(missing_ok=True)
             
             result = self.agent.invoke({"input": query})
             answer = result.get("output", "답변을 생성할 수 없습니다.")
