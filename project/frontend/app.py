@@ -17,7 +17,7 @@ st.set_page_config(
 
 # 사이드바
 with st.sidebar:
-    st.title("� NewMate AI")
+    st.title("💼 NewMate AI")
     st.markdown("### 사회 초년생을 위한 경제·금융 AI 가이드")
     st.markdown("---")
     

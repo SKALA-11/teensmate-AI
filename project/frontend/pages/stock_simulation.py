@@ -290,7 +290,10 @@ def main():
     """주식 시뮬레이션 페이지"""
 
     st.title("📈 실시간 주식 시세 & 모의 투자")
-    st.markdown("한국투자증권 WebSocket API 기반 실시간 주가 · 사회 초년생을 위한 모의 투자 체험")
+    st.markdown("한국투자증권 WebSocket API 기반 실시간 주가 · 사회 초년생을 위한 모의 투자 체험  \n"
+                "실시간 체결 데이터는 장중(평일 09:00 ~ 15:30 KST)에만 수신됩니다.  \n"
+                "WebSocket 연결은 유지되지만, 주가 업데이트가 없을 수 있습니다."
+                )
 
     _show_market_status_banner()
     _init_session()
