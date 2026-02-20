@@ -4,6 +4,14 @@ Value Chain Analysis Page
 밸류체인 분석 페이지
 """
 
+import sys
+from pathlib import Path
+
+# 외부 환경에서 실행 시 프로젝트 루트를 모듈 경로에 추가
+project_root = str(Path(__file__).parent.parent.parent.absolute())
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import streamlit as st
 from PIL import Image
 from agents.value_chain import ValueChainAgent
@@ -45,12 +53,25 @@ def main():
             else:
                 with st.spinner("밸류체인을 분석하고 있습니다..."):
                     try:
-                        result = st.session_state.vc_agent.run(
+                        st.markdown("### 📊 분석 결과")
+                        
+                        # 비동기 제너레이터를 동기 제너레이터로 변환하는 어댑터
+                        import asyncio
+                        def sync_stream(async_gen):
+                            loop = asyncio.new_event_loop()
+                            try:
+                                while True:
+                                    yield loop.run_until_complete(async_gen.__anext__())
+                            except StopAsyncIteration:
+                                pass
+                            finally:
+                                loop.close()
+                                
+                        stream_gen = st.session_state.vc_agent.stream(
                             query=query
                         )
                         
-                        st.markdown("### 📊 분석 결과")
-                        st.markdown(result)
+                        result = st.write_stream(sync_stream(stream_gen))
                         
                     except Exception as e:
                         st.error(f"❌ 오류가 발생했습니다: {str(e)}")
@@ -92,16 +113,29 @@ def main():
                         # 밸류체인 분석
                         query_text = additional_query if additional_query else ""
                         
-                        result = st.session_state.vc_agent.run(
+                        st.markdown("### 📊 분석 결과")
+                        
+                        # 비동기 제너레이터를 동기 제너레이터로 변환하는 어댑터
+                        import asyncio
+                        def sync_stream(async_gen):
+                            loop = asyncio.new_event_loop()
+                            try:
+                                while True:
+                                    yield loop.run_until_complete(async_gen.__anext__())
+                            except StopAsyncIteration:
+                                pass
+                            finally:
+                                loop.close()
+                                
+                        stream_gen = st.session_state.vc_agent.stream(
                             query=query_text,
                             image_path=image_path
                         )
                         
+                        result = st.write_stream(sync_stream(stream_gen))
+                        
                         # 임시 파일 삭제
                         safe_remove_file(image_path)
-                        
-                        st.markdown("### 📊 분석 결과")
-                        st.markdown(result)
                         
                     except Exception as e:
                         st.error(f"❌ 오류가 발생했습니다: {str(e)}")

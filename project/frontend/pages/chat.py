@@ -4,6 +4,14 @@ Chat Page
 채팅 페이지
 """
 
+import sys
+from pathlib import Path
+
+# 외부 환경에서 실행 시 프로젝트 루트를 모듈 경로에 추가
+project_root = str(Path(__file__).parent.parent.parent.absolute())
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import streamlit as st
 from agents.orchestrator import AgentOrchestrator
 
@@ -42,12 +50,26 @@ def main():
             with st.spinner("생각 중..."):
                 try:
                     last_query = st.session_state.messages[-1]["content"]
-                    response = st.session_state.orchestrator.run(
+                    
+                    # 비동기 제너레이터를 동기 제너레이터로 변환하는 어댑터
+                    import asyncio
+                    def sync_stream(async_gen):
+                        loop = asyncio.new_event_loop()
+                        try:
+                            while True:
+                                yield loop.run_until_complete(async_gen.__anext__())
+                        except StopAsyncIteration:
+                            pass
+                        finally:
+                            loop.close()
+                    
+                    stream_gen = st.session_state.orchestrator.stream(
                         query=last_query,
                         session_id="streamlit_user"
                     )
                     
-                    st.markdown(response)
+                    # 실시간 스트리밍 출력
+                    response = st.write_stream(sync_stream(stream_gen))
                     
                     # AI 메시지 추가
                     st.session_state.messages.append({

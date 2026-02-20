@@ -4,8 +4,15 @@ Streamlit Main Application
 사회 초년생을 위한 경제·금융 AI 가이드 UI
 """
 
-import streamlit as st
+import sys
 from pathlib import Path
+
+# 외부 환경에서 실행 시 프로젝트 루트를 모듈 경로에 추가
+project_root = str(Path(__file__).parent.parent.absolute())
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+import streamlit as st
 
 # 페이지 설정
 st.set_page_config(

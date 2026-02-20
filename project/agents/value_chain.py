@@ -77,16 +77,55 @@ class ValueChainAgent:
                 keywords = image_tool._run(image_path=image_path)
                 query = f"{query} (이미지 분석 결과: {keywords})"
             
+            # 이미지 존재 시 기존 파일 삭제 방침에 따라 이 단계에서는 임시 파일만 넘김
             result = self.agent.invoke({"messages": [("user", query)]}, config=config)
             messages = result.get("messages", [])
             if messages:
                 answer = messages[-1].content
-            else:
-                answer = "답변을 생성할 수 없습니다."
+                return answer
             
-            logger.info("Value Chain Agent 실행 완료")
-            return answer
+            return "답변을 생성하지 못했습니다."
             
         except Exception as e:
             logger.error(f"Value Chain Agent 오류: {e}", exc_info=True)
-            return f"답변 생성 중 오류가 발생했습니다: {str(e)}"
+            return f"오류가 발생했습니다: {str(e)}"
+            
+    async def stream(self, query: str, image_path: str = None, config: RunnableConfig = None):
+        """
+        에이전트 스트리밍 실행
+        
+        Args:
+            query: 사용자 쿼리
+            image_path: 이미지 경로
+            config: 설정
+            
+        Yields:
+            텍스트 청크
+        """
+        logger.info(f"Value Chain Agent 스트리밍 실행: {query}")
+        
+        try:
+            if image_path:
+                logger.info(f"이미지 분석: {image_path}")
+                # 이미지 분석 도구 직접 호출
+                image_tool = ImageAnalyzerTool()
+                keywords = image_tool._run(image_path=image_path)
+                query = f"{query} (이미지 분석 결과: {keywords})"
+                
+            # 스트리밍 결과 변수
+            full_response = ""
+            
+            async for event in self.agent.astream_events({"messages": [("user", query)]}, config=config, version="v1"):
+                kind = event["event"]
+                
+                # LLM 스트리밍 청크 반환만 캡처
+                if kind == "on_chat_model_stream":
+                    chunk = event["data"]["chunk"]
+                    if getattr(chunk, "content", None):
+                        content = chunk.content
+                        full_response += content
+                        yield content
+                        
+        except Exception as e:
+            logger.error(f"Value Chain Agent 스트리밍 오류: {e}", exc_info=True)
+            yield f"\n\n[오류 발생: {str(e)}]"
