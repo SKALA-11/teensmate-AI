@@ -82,6 +82,7 @@ def main():
                         # 임시 파일로 저장
                         import tempfile
                         from pathlib import Path
+                        from utils.file_utils import safe_remove_file
                         
                         suffix = Path(uploaded_file.name).suffix
                         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
@@ -97,7 +98,7 @@ def main():
                         )
                         
                         # 임시 파일 삭제
-                        Path(image_path).unlink(missing_ok=True)
+                        safe_remove_file(image_path)
                         
                         st.markdown("### 📊 분석 결과")
                         st.markdown(result)

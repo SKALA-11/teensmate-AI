@@ -10,6 +10,8 @@ from pydantic_settings import BaseSettings
 from pydantic import Field, validator
 
 
+from functools import lru_cache
+
 class Settings(BaseSettings):
     """애플리케이션 설정"""
     
@@ -58,6 +60,7 @@ class Settings(BaseSettings):
     log_file: str = "./logs/app.log"
     
     # Backend 설정
+    cors_allow_origins: str = Field(default="*", env="CORS_ALLOW_ORIGINS")
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
     backend_reload: bool = True
@@ -79,13 +82,17 @@ class Settings(BaseSettings):
         case_sensitive = False
 
 
-# 전역 설정 인스턴스
-settings = Settings()
-
-
+@lru_cache()
 def get_settings() -> Settings:
     """설정 인스턴스를 반환합니다."""
-    return settings
+    return Settings()
+
+# 기존 호환성 유지 및 lazy-load를 위한 SettingsProxy
+class SettingsProxy:
+    def __getattr__(self, name):
+        return getattr(get_settings(), name)
+
+settings = SettingsProxy()
 
 
 

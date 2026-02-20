@@ -6,6 +6,7 @@ Value Chain Agent
 
 from agents.llm import get_llm
 from langgraph.prebuilt import create_react_agent
+from langchain_core.runnables import RunnableConfig
 
 from tools.vector_search import ValueChainSearchTool
 from tools.image_analyzer import ImageAnalyzerTool
@@ -53,13 +54,14 @@ class ValueChainAgent:
     
 
     
-    def run(self, query: str, image_path: str = None) -> str:
+    def run(self, query: str, image_path: str = None, config: RunnableConfig = None) -> str:
         """
         에이전트 실행
         
         Args:
             query: 사용자 쿼리
             image_path: 이미지 경로 (선택)
+            config: RunnableConfig 지원
             
         Returns:
             답변
@@ -69,17 +71,13 @@ class ValueChainAgent:
         try:
             # 이미지가 있으면 먼저 분석
             if image_path:
-                try:
-                    logger.info(f"이미지 분석: {image_path}")
-                    # 이미지 분석 도구 직접 호출
-                    image_tool = ImageAnalyzerTool()
-                    keywords = image_tool._run(image_path=image_path)
-                    query = f"{query} (이미지 분석 결과: {keywords})"
-                finally:
-                    from pathlib import Path
-                    Path(image_path).unlink(missing_ok=True)
+                logger.info(f"이미지 분석: {image_path}")
+                # 이미지 분석 도구 직접 호출
+                image_tool = ImageAnalyzerTool()
+                keywords = image_tool._run(image_path=image_path)
+                query = f"{query} (이미지 분석 결과: {keywords})"
             
-            result = self.agent.invoke({"messages": [("user", query)]})
+            result = self.agent.invoke({"messages": [("user", query)]}, config=config)
             messages = result.get("messages", [])
             if messages:
                 answer = messages[-1].content

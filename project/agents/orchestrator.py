@@ -8,6 +8,7 @@ from typing import TypedDict, Annotated, Sequence, List, Dict
 from operator import add
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.runnables import RunnableConfig
 
 from agents.router import RouterAgent, QueryType
 from agents.education import EducationAgent
@@ -110,7 +111,13 @@ class AgentOrchestrator:
         return state
     
     def _route_query(self, state: AgentState) -> List[str]:
-        """쿼리 라우팅 결정"""
+        """
+        쿼리 라우팅 결정
+        
+        주의: LangGraph v0.2+ 에서는 conditional_edges가 List[str] 반환을 통해
+        Fan-out(명시적 병렬 노드 실행)을 공식 지원합니다.
+        따라서 Send API로 변환하지 않아도 정상적으로 병렬 통신이 가능합니다.
+        """
         classifications = state["classifications"]
         
         # nothing이거나 분류 결과가 없으면 기본 답변으로
@@ -133,40 +140,40 @@ class AgentOrchestrator:
             
         return routes
     
-    def _education_node(self, state: AgentState) -> AgentState:
+    def _education_node(self, state: AgentState, config: RunnableConfig = None) -> AgentState:
         """교육 에이전트 노드"""
         logger.info("Education Agent 노드 실행")
         
         query = state["query"]
-        result = self.edu_agent.run(query)
+        result = self.edu_agent.run(query, config=config)
         
         return {"edu_result": [result]}
     
-    def _news_node(self, state: AgentState) -> dict:
+    def _news_node(self, state: AgentState, config: RunnableConfig = None) -> dict:
         """뉴스 에이전트 노드"""
         logger.info("News Agent 노드 실행")
         
         query = state["query"]
-        result = self.news_agent.run(query)
+        result = self.news_agent.run(query, config=config)
         
         return {"news_result": [result]}
     
-    def _report_node(self, state: AgentState) -> dict:
+    def _report_node(self, state: AgentState, config: RunnableConfig = None) -> dict:
         """리포트 에이전트 노드"""
         logger.info("Report Agent 노드 실행")
         
         query = state["query"]
-        result = self.report_agent.run(query)
+        result = self.report_agent.run(query, config=config)
         
         return {"report_result": [result]}
     
-    def _value_chain_node(self, state: AgentState) -> dict:
+    def _value_chain_node(self, state: AgentState, config: RunnableConfig = None) -> dict:
         """밸류체인 에이전트 노드"""
         logger.info("Value Chain Agent 노드 실행")
         
         query = state["query"]
         image_path = state.get("image_path")
-        result = self.value_chain_agent.run(query, image_path)
+        result = self.value_chain_agent.run(query, image_path, config=config)
         
         return {"value_chain_result": [result]}
     
@@ -208,7 +215,7 @@ class AgentOrchestrator:
         session_id: str = "default"
     ) -> str:
         """
-        오케스트레이터 실행
+        오케스트레이터 동기 실행 (스트리밍 미사용 시)
         
         Args:
             query: 사용자 쿼리
@@ -258,6 +265,103 @@ class AgentOrchestrator:
         except Exception as e:
             logger.error(f"Orchestrator 오류: {e}", exc_info=True)
             return f"답변 생성 중 오류가 발생했습니다: {str(e)}"
+
+    async def stream(
+        self,
+        query: str,
+        image_path: str = None,
+        session_id: str = "default"
+    ):
+        """
+        오케스트레이터 스트리밍 실행
+        
+        Args:
+            query: 사용자 쿼리
+            image_path: 이미지 경로
+            session_id: 세션 ID
+            
+        Yields:
+            실시간 텍스트 청크
+        """
+        logger.info(f"Orchestrator 스트리밍 실행: query='{query}', session={session_id}")
+        
+        try:
+            chat_history = []
+            if self.enable_memory:
+                chat_history = self.memory_store.get(session_id, [])
+            
+            initial_state = {
+                "messages": chat_history + [HumanMessage(content=query)],
+                "query": query,
+                "classifications": [],
+                "edu_result": [],
+                "news_result": [],
+                "report_result": [],
+                "value_chain_result": [],
+                "final_answer": "",
+                "image_path": image_path
+            }
+            
+            # 스트리밍 결과 변수
+            full_response = ""
+            
+            # 병렬 실행 시 순서 보장을 위한 버퍼링 방식 대신, 단순 헤더 주입 방식 사용
+            # (라우터는 무시하고 실제 에이전트들의 응답만 스트리밍)
+            ended_agents = 0
+            
+            async for event in self.workflow.astream_events(initial_state, version="v1"):
+                kind = event["event"]
+                name = event.get("name", "")
+                
+                # 라우터 응답은 스트리밍하지 않음
+                if event.get("metadata", {}).get("langgraph_node") == "router":
+                    continue
+                
+                # 각 에이전트 노드 시작 시 헤더 출력
+                if kind == "on_chain_start":
+                    header = ""
+                    if name == "education":
+                        header = "### 📚 교육 정보\n\n"
+                    elif name == "news":
+                        header = "### 📰 뉴스 분석\n\n"
+                    elif name == "report":
+                        header = "### 📊 리포트 분석\n\n"
+                    elif name == "value_chain":
+                        header = "### 🏭 밸류체인 분석\n\n"
+                        
+                    if header:
+                        if ended_agents > 0:
+                            header = "\n\n---\n\n" + header
+                        full_response += header
+                        yield header
+                        ended_agents += 1
+                
+                # LLM 스트리밍 청크 반환 캡처
+                if kind == "on_chat_model_stream":
+                    chunk = event["data"]["chunk"]
+                    if getattr(chunk, "content", None):
+                        content = chunk.content
+                        full_response += content
+                        yield content
+            
+            # 아무 에이전트도 실행되지 않은 경우 (nothing)
+            if ended_agents == 0 and "nothing" in initial_state.get("classifications", ["nothing"]):
+                fallback = "경제와 관련된 질문을 입력해주세요! 😊"
+                full_response = fallback
+                yield fallback
+
+            # 메모리 저장
+            if self.enable_memory:
+                if session_id not in self.memory_store:
+                    self.memory_store[session_id] = []
+                self.memory_store[session_id].append(HumanMessage(content=query))
+                self.memory_store[session_id].append(AIMessage(content=full_response))
+            
+            logger.info("Orchestrator 스트리밍 완료")
+            
+        except Exception as e:
+            logger.error(f"Orchestrator 스트리밍 오류: {e}", exc_info=True)
+            yield f"\n\n[오류 발생: {str(e)}]"
     
     def clear_memory(self, session_id: str = None):
         """메모리 초기화"""

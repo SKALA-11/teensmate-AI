@@ -6,6 +6,7 @@ News Agent
 
 from agents.llm import get_llm
 from langgraph.prebuilt import create_react_agent
+from langchain_core.runnables import RunnableConfig
 
 from tools.vector_search import NewsSearchTool
 from prompts.investment_analyst import InvestmentAnalystPrompt
@@ -49,12 +50,13 @@ class NewsAgent:
     
 
     
-    def run(self, query: str) -> str:
+    def run(self, query: str, config: RunnableConfig = None) -> str:
         """
         에이전트 실행
         
         Args:
             query: 사용자 쿼리
+            config: RunnableConfig 파라미터
             
         Returns:
             답변
@@ -62,7 +64,7 @@ class NewsAgent:
         logger.info(f"News Agent 실행: {query}")
         
         try:
-            result = self.agent.invoke({"messages": [("user", query)]})
+            result = self.agent.invoke({"messages": [("user", query)]}, config=config)
             messages = result.get("messages", [])
             if messages:
                 answer = messages[-1].content

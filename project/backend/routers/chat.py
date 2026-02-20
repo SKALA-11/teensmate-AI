@@ -88,22 +88,16 @@ async def chat_stream(request: ChatRequest):
     async def generate():
         """스트리밍 생성기"""
         try:
-            # 실제로는 LLM 스트리밍을 사용해야 하지만
-            # 현재는 전체 답변을 생성 후 청크로 전송
-            answer = orchestrator.run(
+            # 오케스트레이터의 스트리밍 제너레이터 사용
+            async for chunk_text in orchestrator.stream(
                 query=request.query,
                 session_id=request.session_id
-            )
-            
-            # 답변을 단어 단위로 스트리밍
-            words = answer.split()
-            for word in words:
+            ):
                 chunk = {
                     "type": "text",
-                    "content": word + " "
+                    "content": chunk_text
                 }
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
-                await asyncio.sleep(0.05)  # 스트리밍 효과
             
             # 완료 신호
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
@@ -152,6 +146,7 @@ async def chat_with_image(
         import tempfile
         import shutil
         from pathlib import Path
+        from utils.file_utils import safe_remove_file
         
         suffix = Path(image.filename).suffix
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
@@ -166,7 +161,7 @@ async def chat_with_image(
         )
         
         # 임시 파일 삭제
-        Path(image_path).unlink(missing_ok=True)
+        safe_remove_file(image_path)
         
         return ChatResponse(
             answer=answer,
