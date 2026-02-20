@@ -19,9 +19,16 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
+# logs 디렉토리 생성
+mkdir -p logs
+
+# Ctrl+C 처리 (docker-compose 실행 전에 등록)
+trap "echo '🛑 종료 중...'; docker-compose down; exit" INT TERM
+
 # Docker Compose 실행
 echo "🚀 Docker Compose 시작..."
+echo "   Backend:  http://localhost:8000/docs"
+echo "   Frontend: http://localhost:8501"
+echo ""
+echo "종료하려면 Ctrl+C를 누르세요."
 docker-compose up --build
-
-# Ctrl+C 처리
-trap "docker-compose down; exit" INT

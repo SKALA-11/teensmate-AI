@@ -1,6 +1,6 @@
 # NewMate AI 🏦💡
 
-> 청소년을 위한 AI 경제 교육 챗봇 - LangChain/LangGraph Multi-Agent RAG System
+> 사회 초년생을 위한 AI 경제육 챗봇 - LangChain/LangGraph Multi-Agent RAG System
 
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.129.0-green.svg)](https://fastapi.tiangolo.com/)
@@ -10,7 +10,7 @@
 
 ## 📖 소개
 
-NewMate AI는 청소년이 경제, 투자, 금융을 쉽게 이해할 수 있도록 돕는 AI 기반 교육 챗봇입니다. LangChain/LangGraph를 사용한 Multi-Agent 시스템으로 구현되어 있으며, RAG (Retrieval-Augmented Generation)를 통해 정확하고 최신의 경제 정보를 제공합니다.
+NewMate AI는 사회 초년생이 경제, 투자, 금융을 쉽게 이해할 수 있도록 돕는 AI 기반 챗봇입니다. LangChain/LangGraph를 사용한 Multi-Agent 시스템으로 구현되어 있으며, RAG (Retrieval-Augmented Generation)를 통해 정확하고 최신의 경제 정보를 제공합니다.
 
 ### 주요 기능
 
@@ -266,12 +266,8 @@ Backend 실행 후 다음 URL에서 API 문서를 확인할 수 있습니다:
 
 ## 🤝 기여
 
-이 프로젝트는 청소년 경제 교육을 위한 오픈소스 프로젝트입니다. 기여는 언제나 환영합니다!
+이 프로젝트는 사회 초년생 경제 교육을 위한 오픈소스 프로젝트입니다. 기여는 언제나 환영합니다!
 
 ## 📄 라이선스
 
 MIT License
-
----
-
-Made with ❤️ for teenagers learning economics
