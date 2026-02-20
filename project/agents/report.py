@@ -5,8 +5,7 @@ Report Agent
 """
 
 from agents.llm import get_llm
-from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langgraph.prebuilt import create_react_agent
 
 from tools.vector_search import ReportSearchTool
 from prompts.investment_analyst import InvestmentAnalystPrompt
@@ -37,29 +36,15 @@ class ReportAgent:
         
         logger.info("Report Agent 초기화 완료")
     
-    def _create_agent(self) -> AgentExecutor:
+    def _create_agent(self):
         """ReAct Agent 생성"""
-        
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            ("human", "{input}"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-        ])
         
         system_message = self.prompt_template.get_system_message()
         
-        agent = create_tool_calling_agent(
-            llm=self.llm,
+        return create_react_agent(
+            model=self.llm,
             tools=self.tools,
-            prompt=prompt.partial(system_message=system_message)
-        )
-        
-        return AgentExecutor(
-            agent=agent,
-            tools=self.tools,
-            verbose=True,
-            max_iterations=3,
-            handle_parsing_errors=True
+            prompt=system_message
         )
     
     def run(self, query: str) -> str:
@@ -75,8 +60,12 @@ class ReportAgent:
         logger.info(f"Report Agent 실행: {query}")
         
         try:
-            result = self.agent.invoke({"input": query})
-            answer = result.get("output", "답변을 생성할 수 없습니다.")
+            result = self.agent.invoke({"messages": [("user", query)]})
+            messages = result.get("messages", [])
+            if messages:
+                answer = messages[-1].content
+            else:
+                answer = "답변을 생성할 수 없습니다."
             
             logger.info("Report Agent 실행 완료")
             return answer
