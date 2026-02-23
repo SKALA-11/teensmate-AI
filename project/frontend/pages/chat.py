@@ -51,41 +51,7 @@ def main():
                 try:
                     last_query = st.session_state.messages[-1]["content"]
                     
-                    # 비동기 제너레이터를 동기 제너레이터로 변환하는 어댑터
-                    def sync_stream(async_gen):
-                        import asyncio
-                        import threading
-                        import queue
-                        
-                        q = queue.Queue()
-                        
-                        def run_async():
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            
-                            async def consume():
-                                try:
-                                    async for item in async_gen:
-                                        q.put(item)
-                                except Exception as e:
-                                    q.put(e)
-                                finally:
-                                    q.put(StopIteration)
-                                    
-                            loop.run_until_complete(consume())
-                            loop.close()
-                            
-                        t = threading.Thread(target=run_async)
-                        t.start()
-                        
-                        while True:
-                            item = q.get()
-                            if item is StopIteration:
-                                break
-                            if isinstance(item, Exception):
-                                raise item
-                            yield item
-                        t.join()
+                    from frontend.utils.streaming import sync_stream
                     
                     stream_gen = st.session_state.orchestrator.stream(
                         query=last_query,

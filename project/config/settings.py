@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     kis_hts_id: str = Field(..., env="KIS_HTS_ID")
     kis_app_key: str = Field(..., env="KIS_APP_KEY")
     kis_app_secret: str = Field(..., env="KIS_APP_SECRET")
+    kis_ws_url: str = Field(default="ws://ops.koreainvestment.com:31000/tryitout", env="KIS_WS_URL")
     
     # ===== 하드코딩된 기본값 (환경변수 불필요) =====
     

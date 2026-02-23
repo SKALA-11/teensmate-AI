@@ -289,7 +289,7 @@ class AgentOrchestrator:
             
         except Exception as e:
             logger.error(f"Orchestrator 오류: {e}", exc_info=True)
-            return f"답변 생성 중 오류가 발생했습니다: {str(e)}"
+            return "내부 엔진에서 오류가 발생하여 답변 생성에 실패했습니다. 잠시 후 다시 시도해주세요."
 
     async def stream(
         self,
@@ -451,7 +451,7 @@ class AgentOrchestrator:
             
         except Exception as e:
             logger.error(f"Orchestrator 스트리밍 오류: {e}", exc_info=True)
-            yield f"\n\n[오류 발생: {str(e)}]"
+            yield "\n\n[내부 엔진에서 오류가 발생하여 답변 스트리밍을 중단합니다. 잠시 후 다시 시도해주세요.]"
     
     def clear_memory(self, session_id: str = None):
         """메모리 초기화"""

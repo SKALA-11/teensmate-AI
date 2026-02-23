@@ -85,7 +85,7 @@ class ValueChainAgent:
             
         except Exception as e:
             logger.error(f"Value Chain Agent 오류: {e}", exc_info=True)
-            return f"오류가 발생했습니다: {str(e)}"
+            return "내부 엔진에서 오류가 발생하여 밸류체인을 분석할 수 없습니다. 잠시 후 다시 시도해주세요."
             
     async def stream(self, query: str, image_path: str = None, config: RunnableConfig = None):
         """
@@ -122,4 +122,4 @@ class ValueChainAgent:
                         
         except Exception as e:
             logger.error(f"Value Chain Agent 스트리밍 오류: {e}", exc_info=True)
-            yield f"\n\n[오류 발생: {str(e)}]"
+            yield "\n\n[내부 엔진에서 오류가 발생하여 답변 스트리밍을 중단합니다. 잠시 후 다시 시도해주세요.]"

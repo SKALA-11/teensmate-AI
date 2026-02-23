@@ -68,7 +68,7 @@ async def chat(request: ChatRequest):
         logger.error(f"채팅 오류: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"답변 생성 중 오류가 발생했습니다: {str(e)}"
+            detail="답변 생성 중 통신 또는 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
         )
 
 
@@ -106,7 +106,7 @@ async def chat_stream(request: ChatRequest):
             logger.error(f"스트리밍 오류: {e}", exc_info=True)
             error_chunk = {
                 "type": "error",
-                "content": str(e)
+                "content": "답변 스트리밍 중 통신 또는 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
             }
             yield f"data: {json.dumps(error_chunk, ensure_ascii=False)}\n\n"
     
@@ -183,7 +183,7 @@ async def chat_with_image(
         logger.error(f"이미지 채팅 오류: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"답변 생성 중 오류가 발생했습니다: {str(e)}"
+            detail="이미지 분석 및 답변 생성 중 통신 또는 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
         )
 
 
@@ -209,5 +209,5 @@ async def clear_session(session_id: str):
         logger.error(f"세션 초기화 오류: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"세션 초기화 중 오류가 발생했습니다: {str(e)}"
+            detail="세션 초기화 중 통신 또는 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
         )

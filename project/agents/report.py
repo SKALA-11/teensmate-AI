@@ -74,4 +74,4 @@ class ReportAgent:
             
         except Exception as e:
             logger.error(f"Report Agent 오류: {e}", exc_info=True)
-            return f"답변 생성 중 오류가 발생했습니다: {str(e)}"
+            return "내부 엔진에서 오류가 발생하여 리포트를 분석할 수 없습니다. 잠시 후 다시 시도해주세요."

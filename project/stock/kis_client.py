@@ -24,9 +24,9 @@ from config.logging import get_logger
 logger = get_logger(__name__)
 
 
-# KIS API URLs (모의투자)
+# KIS API URLs (모의투자/운영 전환 가능)
 KIS_BASE_URL = "https://openapivts.koreainvestment.com:29443"
-KIS_WS_URL = "ws://ops.koreainvestment.com:31000/tryitout"
+KIS_WS_URL = settings.kis_ws_url
 
 
 class KISWebSocketClient:
